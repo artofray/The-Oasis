@@ -123,3 +123,15 @@ export interface BedtimeStory {
   story: string;
   coverImageUrl: string;
 }
+
+// FIX: Manually define the Type enum as it is not exported from the package version in use.
+export enum SchemaType {
+  TYPE_UNSPECIFIED = 'TYPE_UNSPECIFIED',
+  STRING = 'STRING',
+  NUMBER = 'NUMBER',
+  INTEGER = 'INTEGER',
+  BOOLEAN = 'BOOLEAN',
+  ARRAY = 'ARRAY',
+  OBJECT = 'OBJECT',
+  NULL = 'NULL',
+}

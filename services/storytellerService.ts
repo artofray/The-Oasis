@@ -1,10 +1,11 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import type { RoundTableAgent, BedtimeStory } from '../types';
+import { GoogleGenAI } from "@google/genai";
+import { type RoundTableAgent, type BedtimeStory, SchemaType as Type } from '../types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable not set");
 }
 
+// FIX: Updated to use GoogleGenAI from @google/genai and initialize with an API key object as per latest SDK guidelines.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const textModel = 'gemini-2.5-flash';
 const imageModel = 'imagen-4.0-generate-001';

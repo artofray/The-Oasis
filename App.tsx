@@ -1,3 +1,5 @@
+// FIX: Moved React import to the top of the file.
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { MyAiAssistant } from './components/features/MyAiAssistant';
 import { Dashboard } from './components/apps/Dashboard';
@@ -109,8 +111,7 @@ const App: React.FC = () => {
       </main>
       <MyAiAssistant setCurrentView={setCurrentView} agents={agents} />
     </div>
-  );import React, { useState, useEffect } from 'react';
-
+  );
 };
 
 export default App;

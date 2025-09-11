@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { CommandResponse, TaskPriority } from '../types';
 
+// FIX: Updated to use GoogleGenAI from @google/genai and initialize with an API key object as per latest SDK guidelines.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const commandMap: { keywords: string[], action: CommandResponse['action'], payload?: string }[] = [
