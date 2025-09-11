@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // Manually define the SpeechRecognition interface to fix TypeScript error
@@ -18,15 +17,34 @@ export const useSpeech = () => {
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [transcript, setTranscript] = useState('');
+    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const isMountedRef = useRef(false);
 
     useEffect(() => {
         isMountedRef.current = true;
 
+        const handleVoicesChanged = () => {
+             try {
+                if ('speechSynthesis' in window && window.speechSynthesis) {
+                    setVoices(window.speechSynthesis.getVoices());
+                }
+            } catch (e) {
+                console.warn("Error getting speech synthesis voices:", e);
+            }
+        };
+        
+        try {
+            if ('speechSynthesis' in window && window.speechSynthesis) {
+                window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+                handleVoicesChanged(); // Initial call
+            }
+        } catch(e) {
+            console.warn("Could not set up onvoiceschanged handler:", e);
+        }
+
         return () => {
             isMountedRef.current = false;
-            // Cleanup recognition if it was ever initialized.
             if (recognitionRef.current) {
                 try {
                     recognitionRef.current.onresult = null;
@@ -38,24 +56,21 @@ export const useSpeech = () => {
                 }
                 recognitionRef.current = null;
             }
-            // Cleanup speech synthesis if it's speaking.
             try {
-                // Safer check before accessing the API to prevent security exceptions.
-                // Avoid accessing .speaking property which can throw uncatchable errors.
                 if ('speechSynthesis' in window && window.speechSynthesis) {
                     window.speechSynthesis.cancel();
+                    window.speechSynthesis.onvoiceschanged = null;
                 }
             } catch (e) {
-                console.warn("Error cancelling speech on cleanup:", e);
+                console.warn("Error cleaning up speech synthesis on cleanup:", e);
             }
         };
-    }, []); // Empty dependency array ensures this runs only once on mount/unmount.
+    }, []); 
 
     const initRecognition = useCallback(() => {
-        if (recognitionRef.current) return; // Abort if already initialized
+        if (recognitionRef.current) return;
 
         try {
-            // Use the 'in' operator for a safer check that avoids access exceptions.
             const SpeechRecognitionImpl = 
                 ('SpeechRecognition' in window) ? (window as any).SpeechRecognition :
                 ('webkitSpeechRecognition' in window) ? (window as any).webkitSpeechRecognition : null;
@@ -78,7 +93,6 @@ export const useSpeech = () => {
                     setTranscript(currentTranscript);
                 }
                 try {
-                    // Stop listening after a result is received. This will trigger onend.
                     recognitionRef.current?.stop();
                 } catch (err) {
                     console.error("Error stopping recognition in onresult:", err);
@@ -95,12 +109,11 @@ export const useSpeech = () => {
             };
         } catch (e) {
             console.error("Speech Recognition setup failed. Feature will be disabled.", e);
-            recognitionRef.current = null; // Ensure ref is null if setup fails
+            recognitionRef.current = null;
         }
     }, []);
 
     const startListening = useCallback(() => {
-        // Lazily initialize the recognition object on first use.
         initRecognition();
 
         if (recognitionRef.current && !isListening) {
@@ -119,7 +132,6 @@ export const useSpeech = () => {
         if (recognitionRef.current && isListening) {
             try {
                 recognitionRef.current.stop();
-                // The onend handler will set isListening to false.
             } catch (error) {
                 console.error("Could not stop recognition:", error);
                 if (isMountedRef.current) setIsListening(false);
@@ -127,20 +139,26 @@ export const useSpeech = () => {
         }
     }, [isListening]);
 
-    const speak = useCallback((text: string) => {
+    const speak = useCallback((text: string, options?: { voice?: SpeechSynthesisVoice; pitch?: number; rate?: number }) => {
         try {
-            // Safer check for API availability before use.
             if (!('speechSynthesis' in window) || !window.speechSynthesis) {
                 console.warn("Speech Synthesis API is not available.");
                 return;
             }
             const speechSynthesisApi = window.speechSynthesis;
-
-            // Cancel any previous speech to prevent overlap.
-            // Call cancel() directly to avoid accessing .speaking property.
             speechSynthesisApi.cancel();
 
             const utterance = new SpeechSynthesisUtterance(text);
+            
+            if (options?.voice) {
+                utterance.voice = options.voice;
+            }
+            if (options?.pitch) {
+                utterance.pitch = options.pitch;
+            }
+            if (options?.rate) {
+                utterance.rate = options.rate;
+            }
             
             utterance.onstart = () => {
                 if (isMountedRef.current) setIsSpeaking(true);
@@ -160,5 +178,19 @@ export const useSpeech = () => {
         }
     }, []);
 
-    return { isListening, transcript, startListening, stopListening, isSpeaking, speak };
+    // FIX: Add a `stop` function to cancel speech synthesis.
+    const stop = useCallback(() => {
+        try {
+            if ('speechSynthesis' in window && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+                if (isMountedRef.current) {
+                    setIsSpeaking(false);
+                }
+            }
+        } catch (e) {
+            console.error("Speech Synthesis cancellation failed:", e);
+        }
+    }, []);
+
+    return { isListening, transcript, startListening, stopListening, isSpeaking, speak, voices, stop };
 };

@@ -3,13 +3,14 @@ import type { RoundTableAgent } from '../../../types';
 
 interface AgentAvatarProps {
     agent: RoundTableAgent;
-    size?: 'sm' | 'md';
+    size?: 'sm' | 'md' | 'lg';
 }
 
 export const AgentAvatar: React.FC<AgentAvatarProps> = ({ agent, size = 'md' }) => {
     const sizeClasses = {
         sm: 'w-8 h-8 text-sm',
         md: 'w-10 h-10 text-base',
+        lg: 'w-32 h-32 text-4xl',
     };
 
     if (agent.avatarUrl) {

@@ -1,24 +1,109 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AgentSelector } from './round-table/AgentSelector';
 import { ChatWindow } from './round-table/ChatWindow';
 import { MessageInput } from './round-table/MessageInput';
 import { AgentEditModal } from './round-table/AgentEditModal';
-import { AGENTS as INITIAL_AGENTS } from './round-table/constants';
 import * as roundTableService from '../../services/roundTableService';
 import type { ChatMessage, ChatMode, RoundTableAgent } from '../../types';
 import { useSpeech } from '../../hooks/useSpeech';
 
-export const RoundTableView: React.FC = () => {
+const NEW_AGENT_TEMPLATE: Omit<RoundTableAgent, 'id'> = {
+    name: 'New Agent',
+    description: 'A newly created AI with a fresh perspective.',
+    avatarColor: 'bg-gray-500',
+    colorHex: '#6B7280',
+    currentActivity: 'Awaiting instructions.',
+    systemInstruction: 'You are a helpful AI assistant.',
+    voiceCloned: false,
+};
+interface RoundTableViewProps {
+    agents: RoundTableAgent[];
+    setAgents: (agents: RoundTableAgent[] | ((prev: RoundTableAgent[]) => RoundTableAgent[])) => void;
+}
+
+export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgents }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
     const [mode, setMode] = useState<ChatMode>('round_table');
     const [isLoading, setIsLoading] = useState(false);
     const [webAccess, setWebAccess] = useState(false);
     const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-    const [agents, setAgents] = useState<RoundTableAgent[]>(INITIAL_AGENTS);
-    const [editingAgent, setEditingAgent] = useState<RoundTableAgent | null>(null);
+    const [modalState, setModalState] = useState<{ isOpen: boolean; agent: RoundTableAgent | null }>({ isOpen: false, agent: null });
+    const [agentVoiceMap, setAgentVoiceMap] = useState<Record<string, SpeechSynthesisVoice | undefined>>({});
 
-    const { speak } = useSpeech();
+    const { speak, voices } = useSpeech();
+
+    useEffect(() => {
+        if (voices.length > 0 && agents.length > 0) {
+            const newMap: Record<string, SpeechSynthesisVoice | undefined> = {};
+            const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+            const usableVoices = englishVoices.length > 0 ? englishVoices : voices;
+            
+            agents.forEach((agent, index) => {
+                newMap[agent.id] = usableVoices[index % usableVoices.length];
+            });
+            setAgentVoiceMap(newMap);
+        }
+    }, [voices, agents]);
+
+    useEffect(() => {
+        const intervals: Record<string, number> = {};
+        
+        const reassuringMessages = [
+            "Our digital artisans are crafting your video pixel by pixel...",
+            "Just a moment, rendering the final scenes...",
+            "Polishing the visuals, this might take a little while...",
+            "Almost there! Preparing your video for viewing..."
+        ];
+        let messageIndex = 0;
+
+        messages.forEach(msg => {
+            if (msg.videoGenerationOperation && !msg.videoUrl && !intervals[msg.id]) {
+                intervals[msg.id] = window.setInterval(async () => {
+                    try {
+                        const updatedOperation = await roundTableService.checkVideoStatus(msg.videoGenerationOperation);
+                        
+                        if (updatedOperation.done) {
+                            clearInterval(intervals[msg.id]);
+                            delete intervals[msg.id];
+
+                            const downloadLink = updatedOperation.response?.generatedVideos?.[0]?.video?.uri;
+                            if (downloadLink && process.env.API_KEY) {
+                                const videoUrl = `${downloadLink}&key=${process.env.API_KEY}`;
+                                setMessages(prev => prev.map(m => 
+                                    m.id === msg.id 
+                                    ? { ...m, text: `Your video for "${m.originalPrompt}" is ready!`, videoUrl: videoUrl, videoGenerationOperation: undefined, originalPrompt: undefined } 
+                                    : m
+                                ));
+                            } else {
+                                throw new Error("Video generation finished but no URI was found or API_KEY is missing.");
+                            }
+                        } else {
+                            // Update with a reassuring message
+                            setMessages(prev => prev.map(m => 
+                                m.id === msg.id 
+                                ? { ...m, text: reassuringMessages[messageIndex++ % reassuringMessages.length] } 
+                                : m
+                            ));
+                        }
+                    } catch (error) {
+                        console.error("Error polling video status:", error);
+                        clearInterval(intervals[msg.id]);
+                        delete intervals[msg.id];
+                        setMessages(prev => prev.map(m => 
+                            m.id === msg.id 
+                            ? { ...m, text: "An error occurred while generating the video.", videoGenerationOperation: undefined, originalPrompt: undefined } 
+                            : m
+                        ));
+                    }
+                }, 10000);
+            }
+        });
+
+        return () => {
+            Object.values(intervals).forEach(clearInterval);
+        };
+    }, [messages]);
 
     const handleAgentToggle = (agentId: string) => {
         setSelectedAgentIds(prev => {
@@ -35,13 +120,23 @@ export const RoundTableView: React.FC = () => {
     const handleEditAgent = (agentId: string) => {
         const agentToEdit = agents.find(a => a.id === agentId);
         if(agentToEdit) {
-            setEditingAgent(agentToEdit);
+            setModalState({ isOpen: true, agent: agentToEdit });
         }
     };
     
+    const handleCreateAgent = () => {
+        const newAgent: RoundTableAgent = { ...NEW_AGENT_TEMPLATE, id: `agent-${Date.now()}` };
+        setModalState({ isOpen: true, agent: newAgent });
+    };
+
     const handleSaveAgent = (updatedAgent: RoundTableAgent) => {
-        setAgents(prev => prev.map(a => a.id === updatedAgent.id ? updatedAgent : a));
-        setEditingAgent(null);
+        const agentExists = agents.some(a => a.id === updatedAgent.id);
+        if (agentExists) {
+            setAgents(prev => prev.map(a => a.id === updatedAgent.id ? updatedAgent : a));
+        } else {
+            setAgents(prev => [...prev, updatedAgent]);
+        }
+        setModalState({ isOpen: false, agent: null });
     }
 
     const handleSendMessage = useCallback(async (prompt: string) => {
@@ -77,7 +172,16 @@ export const RoundTableView: React.FC = () => {
             );
             
             if (isAudioEnabled) {
-                speak(response.text);
+                const agentVoice = agentVoiceMap[agent.id];
+                const speechOptions: { voice?: SpeechSynthesisVoice; pitch?: number; rate?: number } = { voice: agentVoice };
+                
+                if (agent.voiceCloned) {
+                    const hash = agent.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                    speechOptions.pitch = 1 + (hash % 5) / 10 - 0.2; // Range 0.8 to 1.2
+                    speechOptions.rate = 1 + (hash % 3) / 10 - 0.1;  // Range 0.9 to 1.1
+                }
+
+                speak(response.text, speechOptions);
             }
             
             const agentResponseMessage: ChatMessage = {
@@ -93,7 +197,7 @@ export const RoundTableView: React.FC = () => {
         }
 
         setIsLoading(false);
-    }, [isLoading, selectedAgentIds, messages, webAccess, agents, isAudioEnabled, speak]);
+    }, [isLoading, selectedAgentIds, messages, webAccess, agents, isAudioEnabled, speak, agentVoiceMap]);
 
     const handleSendMedia = async (type: 'image' | 'video' | 'audio', prompt: string) => {
         if (isLoading || !prompt) return;
@@ -123,6 +227,7 @@ export const RoundTableView: React.FC = () => {
                 selectedAgentIds={selectedAgentIds}
                 onAgentToggle={handleAgentToggle}
                 onEditAgent={handleEditAgent}
+                onCreateAgent={handleCreateAgent}
             />
             <div className="flex flex-col flex-1">
                 <ChatWindow messages={messages} />
@@ -137,11 +242,11 @@ export const RoundTableView: React.FC = () => {
                     disabled={selectedAgentIds.size === 0}
                 />
             </div>
-            {editingAgent && (
+            {modalState.isOpen && modalState.agent && (
                 <AgentEditModal 
-                    agent={editingAgent}
+                    agent={modalState.agent}
                     onSave={handleSaveAgent}
-                    onClose={() => setEditingAgent(null)}
+                    onClose={() => setModalState({ isOpen: false, agent: null })}
                 />
             )}
         </div>

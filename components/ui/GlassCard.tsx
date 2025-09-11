@@ -9,7 +9,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', 
   return (
     <div
       {...rest}
-      className={`bg-black/20 backdrop-blur-xl border border-cyan-400/20 rounded-2xl shadow-lg shadow-cyan-500/5 ${className}`}
+      className={`bg-black/20 backdrop-blur-xl border border-red-400/20 rounded-2xl shadow-lg shadow-red-500/5 ${className}`}
     >
       {children}
     </div>

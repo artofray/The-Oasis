@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'agents' | 'workflows' | 'teach' | 'settings' | 'round_table' | 'tarot_journal';
+export type View = 'dashboard' | 'mansion' | 'workflows' | 'teach' | 'settings' | 'round_table' | 'tarot_journal' | 'theatre' | 'sandbox' | 'murder_mystery' | 'poolside' | 'penthouse' | 'activities' | 'avatar_studio';
 
 export type TaskPriority = 'low' | 'medium' | 'high';
 
@@ -33,7 +33,20 @@ export interface RoundTableAgent {
     description: string;
     systemInstruction: string;
     avatarColor: string;
+    colorHex: string;
     avatarUrl?: string;
+    currentActivity: string;
+    pet?: {
+        name: string;
+        type: string;
+    };
+    voiceSampleUrl?: string;
+    voiceCloned?: boolean;
+    body?: {
+        torsoScale?: number;
+        armScale?: number;
+        legScale?: number;
+    };
 }
 
 export interface ChatMessage {
@@ -44,6 +57,8 @@ export interface ChatMessage {
     videoUrl?: string;
     sources?: { uri: string; title: string }[];
     agent?: RoundTableAgent;
+    videoGenerationOperation?: any;
+    originalPrompt?: string;
 }
 
 export type ChatMode = 'round_table' | 'direct';
@@ -62,4 +77,49 @@ export interface JournalEntry {
   cards: TarotCard[];
   notes: string;
   overallInterpretation: string;
+}
+
+// Murder Mystery Game Mode Types
+export interface MurderMysteryCharacter {
+  agentId: string;
+  name: string;
+  role: 'Victim' | 'Murderer' | 'Suspect';
+  backstoryInPlot: string;
+}
+
+export interface MurderMysteryPlot {
+  setting: {
+    name: string;
+    description: string;
+  };
+  title: string;
+  synopsis: string;
+  characters: MurderMysteryCharacter[];
+  openingScene: string;
+}
+
+// Penthouse Types
+export interface PenthouseFurniture {
+    id: string;
+    type: 'sofa' | 'table' | 'chair' | 'plant';
+    position: { x: number; y: number; z: number };
+    rotation: number;
+}
+
+export type PenthouseLayout = PenthouseFurniture[];
+
+// Market Analysis Types
+export interface StockAnalysis {
+    companyName: string;
+    ticker: string;
+    summary: string;
+    sentiment: 'Bullish' | 'Bearish' | 'Neutral';
+    keyFactors: string[];
+}
+
+// Bedtime Story Types
+export interface BedtimeStory {
+  title: string;
+  story: string;
+  coverImageUrl: string;
 }

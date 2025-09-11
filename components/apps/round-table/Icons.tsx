@@ -22,3 +22,9 @@ export const SpeakerOffIcon: React.FC<IconProps> = ({ className }) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l-4-4m0 4l4-4" />
     </svg>
 );
+
+export const VoiceClonedIcon: React.FC<IconProps> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M20 6a9 9 0 010 12.728M4.5 12H4a1 1 0 00-1 1v1a1 1 0 001 1h.5m2.5-3h1a1 1 0 001-1v-1a1 1 0 00-1-1h-1m3.5 3h1a1 1 0 001-1v-1a1 1 0 00-1-1h-1m4.5 3h.5a1 1 0 001-1v-1a1 1 0 00-1-1h-.5" />
+    </svg>
+);

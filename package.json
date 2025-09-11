@@ -1,5 +1,5 @@
 {
-  "name": "the-oasis",
+  "name": "copy-of-copy-of-copy-of-copy-of-the-oasis",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,7 +11,8 @@
   "dependencies": {
     "@google/genai": "^0.14.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "three": "^0.179.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

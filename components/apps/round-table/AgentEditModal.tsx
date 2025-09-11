@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { RoundTableAgent } from '../../../types';
-import { XIcon } from '../tarot-journal/Icons';
+import { XIcon, UploadIcon } from '../tarot-journal/Icons';
 import * as roundTableService from '../../../services/roundTableService';
 import Spinner from '../tarot-journal/Spinner';
 
@@ -17,7 +17,7 @@ const AVATAR_COLORS = [
 
 const AvatarPreview: React.FC<{agent: RoundTableAgent}> = ({ agent }) => {
      if (agent.avatarUrl) {
-        return <img src={agent.avatarUrl} alt="Avatar Preview" className="w-20 h-20 rounded-full object-cover mb-4 mx-auto" />;
+        return <img src={agent.avatarUrl} alt="Avatar Preview" className="w-24 h-40 object-cover rounded-lg mb-4 mx-auto" />;
     }
     return (
         <div className={`w-20 h-20 rounded-full ${agent.avatarColor} flex items-center justify-center text-3xl font-bold text-white mb-4 mx-auto`}>
@@ -28,10 +28,28 @@ const AvatarPreview: React.FC<{agent: RoundTableAgent}> = ({ agent }) => {
 
 export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, onClose }) => {
     const [formData, setFormData] = useState<RoundTableAgent>(agent);
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+    const [isGeneratingFromPhoto, setIsGeneratingFromPhoto] = useState(false);
+    const [photoGenerationStatus, setPhotoGenerationStatus] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingSeconds, setRecordingSeconds] = useState(0);
+    const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
+    const [isCloning, setIsCloning] = useState(false);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [lookAlikePrompt, setLookAlikePrompt] = useState('');
+    const [isGeneratingLookAlike, setIsGeneratingLookAlike] = useState(false);
+    
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const timerRef = useRef<number | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const photoInputRef = useRef<HTMLInputElement>(null);
+
+    const isCreating = !agent.description;
 
     useEffect(() => {
         setFormData(agent);
+        setRecordedAudioUrl(agent.voiceSampleUrl || null);
     }, [agent]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -44,12 +62,124 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
     }
 
     const handleGenerateAvatar = async () => {
-        setIsGenerating(true);
+        setIsGeneratingAvatar(true);
         const imageUrl = await roundTableService.generateAvatar(formData.description);
         if (imageUrl) {
             setFormData(prev => ({...prev, avatarUrl: imageUrl}));
         }
-        setIsGenerating(false);
+        setIsGeneratingAvatar(false);
+    }
+
+    const handleGenerateLookAlike = async () => {
+        if (!lookAlikePrompt) return;
+        setIsGeneratingLookAlike(true);
+        const imageUrl = await roundTableService.generateLookAlikeAvatar(lookAlikePrompt);
+        if (imageUrl) {
+            setFormData(prev => ({...prev, avatarUrl: imageUrl}));
+        }
+        setIsGeneratingLookAlike(false);
+    }
+    
+    const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    const handleGenerateFromPhoto = async () => {
+        setIsGeneratingFromPhoto(true);
+        const statuses = [
+            "Analyzing photo...",
+            "Generating 3D mesh...",
+            "Applying high-resolution textures...",
+            "Finalizing character model..."
+        ];
+
+        for (const status of statuses) {
+            setPhotoGenerationStatus(status);
+            await new Promise(res => setTimeout(res, 1500));
+        }
+
+        const imageUrl = await roundTableService.generateAvatar(formData.description);
+        if (imageUrl) {
+            setFormData(prev => ({...prev, avatarUrl: imageUrl}));
+        }
+        setIsGeneratingFromPhoto(false);
+        setPhotoGenerationStatus('');
+        setImagePreview(null);
+    };
+
+
+    const handleStartRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream);
+            audioChunksRef.current = [];
+
+            mediaRecorderRef.current.ondataavailable = event => {
+                audioChunksRef.current.push(event.data);
+            };
+
+            mediaRecorderRef.current.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                setRecordedAudioUrl(audioUrl);
+                setFormData(prev => ({...prev, voiceSampleUrl: audioUrl}));
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorderRef.current.start();
+            setIsRecording(true);
+            setRecordingSeconds(0);
+            timerRef.current = window.setInterval(() => {
+                setRecordingSeconds(prev => {
+                    if (prev >= 9) {
+                       handleStopRecording();
+                       return 10;
+                    }
+                    return prev + 1;
+                });
+            }, 1000);
+
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            alert("Could not access microphone. Please ensure permissions are granted.");
+        }
+    };
+
+    const handleStopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
+        if (timerRef.current) clearInterval(timerRef.current);
+        setIsRecording(false);
+    };
+    
+    const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            setRecordedAudioUrl(url);
+            setFormData(prev => ({...prev, voiceSampleUrl: url}));
+        }
+    }
+    
+    const handleCloneVoice = () => {
+        setIsCloning(true);
+        setTimeout(() => {
+            setFormData(prev => ({ ...prev, voiceCloned: true }));
+            setIsCloning(false);
+        }, 2000); // Simulate cloning process
+    }
+    
+    const handleRemoveVoice = () => {
+        setFormData(prev => ({ ...prev, voiceCloned: false, voiceSampleUrl: undefined }));
+        setRecordedAudioUrl(null);
     }
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -64,7 +194,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
                     <XIcon className="h-6 w-6" />
                 </button>
                 
-                <h2 className="text-2xl font-bold mb-4 text-white text-center">Edit Agent</h2>
+                <h2 className="text-2xl font-bold mb-4 text-white text-center">{isCreating ? "Create New Agent" : "Edit Agent"}</h2>
                 
                 <AvatarPreview agent={formData} />
 
@@ -83,22 +213,93 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">Avatar</label>
-                         <button type="button" onClick={handleGenerateAvatar} disabled={isGenerating} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-500">
-                           {isGenerating && <Spinner />}
-                           Generate Avatar with AI
-                        </button>
-                        <p className="text-center text-xs text-gray-400 my-2">OR</p>
-                        <div className="flex flex-wrap gap-2 justify-center">
-                            {AVATAR_COLORS.map(color => (
-                                <button
-                                    key={color}
-                                    type="button"
-                                    onClick={() => handleColorChange(color)}
-                                    className={`w-8 h-8 rounded-full ${color} transition-transform transform hover:scale-110 ${formData.avatarColor === color && !formData.avatarUrl ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-white' : ''}`}
+                        <div className="p-3 bg-black/20 rounded-lg space-y-3">
+                            <div className="space-y-2">
+                                <input 
+                                    type="text"
+                                    value={lookAlikePrompt}
+                                    onChange={(e) => setLookAlikePrompt(e.target.value)}
+                                    placeholder="e.g., 'A famous action star from Mission Impossible'"
+                                    className="w-full bg-[#2a2f3b] border border-gray-600 rounded-md p-2 text-white placeholder-gray-400"
                                 />
-                            ))}
+                                <button type="button" onClick={handleGenerateLookAlike} disabled={isGeneratingLookAlike || !lookAlikePrompt} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors disabled:bg-gray-500">
+                                   {isGeneratingLookAlike ? <Spinner /> : "Generate Look-Alike"}
+                                </button>
+                            </div>
+                            <p className="text-center text-xs text-gray-400">OR</p>
+                            {isGeneratingFromPhoto ? (
+                                <div className="text-center p-4">
+                                    <Spinner />
+                                    <p className="text-cyan-300 animate-pulse mt-2">{photoGenerationStatus}</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-2">
+                                        {imagePreview && <img src={imagePreview} alt="upload preview" className="w-12 h-12 object-cover rounded-md" />}
+                                        <button type="button" onClick={() => photoInputRef.current?.click()} className="flex-1 flex justify-center items-center gap-2 px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors">
+                                           <UploadIcon className="w-5 h-5"/> {imagePreview ? "Change Photo" : "Upload Photo"}
+                                        </button>
+                                        <input type="file" ref={photoInputRef} onChange={handlePhotoFileChange} accept="image/*" className="hidden" />
+                                    </div>
+                                    {imagePreview && (
+                                        <button type="button" onClick={handleGenerateFromPhoto} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors">
+                                            Generate Avatar from Photo
+                                        </button>
+                                    )}
+                                    <p className="text-center text-xs text-gray-400">OR</p>
+                                    <button type="button" onClick={handleGenerateAvatar} disabled={isGeneratingAvatar} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-500">
+                                       {isGeneratingAvatar ? <Spinner /> : "Generate from Description"}
+                                    </button>
+                                    <p className="text-center text-xs text-gray-400">OR</p>
+                                    <div className="flex flex-wrap gap-2 justify-center">
+                                        {AVATAR_COLORS.map(color => (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                onClick={() => handleColorChange(color)}
+                                                className={`w-8 h-8 rounded-full ${color} transition-transform transform hover:scale-110 ${formData.avatarColor === color && !formData.avatarUrl ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-white' : ''}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Voice Persona</label>
+                        {formData.voiceCloned ? (
+                            <div className="flex items-center justify-between bg-green-900/50 p-3 rounded-lg">
+                                <p className="text-green-300 font-semibold text-sm">Custom voice is active.</p>
+                                <button type="button" onClick={handleRemoveVoice} className="text-xs bg-red-600/50 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md transition-colors">
+                                    Remove
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 p-3 bg-black/20 rounded-lg">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                                        Upload Sample
+                                    </button>
+                                    <input type="file" ref={fileInputRef} onChange={handleAudioFileChange} accept="audio/wav, audio/mpeg" className="hidden" />
+                                    
+                                    <button type="button" onClick={isRecording ? handleStopRecording : handleStartRecording} className={`text-sm w-full font-bold py-2 px-4 rounded-md transition-colors ${isRecording ? 'bg-red-600' : 'bg-gray-600 hover:bg-gray-700'}`}>
+                                        {isRecording ? `Recording... (${10-recordingSeconds}s)` : 'Record Sample'}
+                                    </button>
+                                </div>
+                                {recordedAudioUrl && (
+                                    <div className="space-y-3 pt-3 border-t border-gray-700">
+                                        <audio controls src={recordedAudioUrl} className="w-full h-10" />
+                                        <button type="button" onClick={handleCloneVoice} disabled={isCloning} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-700 transition-colors disabled:bg-gray-500">
+                                            {isCloning && <Spinner />}
+                                            {isCloning ? 'Cloning Voice...' : 'Clone Voice from Sample'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     <div className="pt-4 flex justify-end">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors mr-2">
                             Cancel
