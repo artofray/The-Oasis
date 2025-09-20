@@ -8,7 +8,7 @@ import { BedtimeStoryModal } from './activities/BedtimeStoryModal';
 
 interface ActivitiesViewProps {
     agents: RoundTableAgent[];
-    setAgents: (agents: (prev: RoundTableAgent[]) => RoundTableAgent[]) => void;
+    setAgents: (updater: (prev: RoundTableAgent[]) => RoundTableAgent[]) => void;
 }
 
 const ActivityCard: React.FC<{ title: string, description: string, icon: string, onClick: () => void }> = ({ title, description, icon, onClick }) => (
@@ -24,6 +24,8 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ agents, setAgent
     const [isTryOnModalOpen, setIsTryOnModalOpen] = useState(false);
     const [isCuddlePuddleModalOpen, setIsCuddlePuddleModalOpen] = useState(false);
     const [isBedtimeStoryModalOpen, setIsBedtimeStoryModalOpen] = useState(false);
+    
+    const maggie = agents.find(a => a.id === 'maggie');
 
     const handleUpdateMaggie = (newAvatarUrl: string) => {
         setAgents(prev => prev.map(agent => 
@@ -70,11 +72,12 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ agents, setAgent
                 />
             </div>
 
-            {isNightOutModalOpen && (
+            {isNightOutModalOpen && maggie && (
                 <NightOutModal
                     isOpen={isNightOutModalOpen}
                     onClose={() => setIsNightOutModalOpen(false)}
                     onAvatarUpdate={handleUpdateMaggie}
+                    agent={maggie}
                 />
             )}
             {isTryOnModalOpen && (

@@ -1,32 +1,20 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { JournalEntry } from '../../types';
 import CalendarView from './tarot-journal/CalendarView';
 import JournalModal from './tarot-journal/JournalModal';
 import { PlusIcon, BookOpenIcon } from './tarot-journal/Icons';
 
-export const TarotJournalView: React.FC = () => {
-  const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
+interface TarotJournalViewProps {
+  entries: Record<string, JournalEntry>;
+  setEntries: (entries: Record<string, JournalEntry>) => void;
+}
+
+export const TarotJournalView: React.FC<TarotJournalViewProps> = ({ entries, setEntries }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    try {
-      const savedEntries = localStorage.getItem('tarotJournalEntries');
-      if (savedEntries) {
-        setEntries(JSON.parse(savedEntries));
-      }
-    } catch (error) {
-      console.error("Failed to load journal entries from local storage:", error);
-    }
-  }, []);
-
   const updateEntries = (newEntries: Record<string, JournalEntry>) => {
     setEntries(newEntries);
-    try {
-      localStorage.setItem('tarotJournalEntries', JSON.stringify(newEntries));
-    } catch (error) {
-      console.error("Failed to save journal entries to local storage:", error);
-    }
   };
 
   const selectedDateString = useMemo(() => {
@@ -41,14 +29,14 @@ export const TarotJournalView: React.FC = () => {
     const newEntries = { ...entries, [entry.date]: entry };
     updateEntries(newEntries);
     setIsModalOpen(false);
-  }, [entries]);
+  }, [entries, setEntries]);
 
   const handleDeleteEntry = useCallback((date: string) => {
     const newEntries = { ...entries };
     delete newEntries[date];
     updateEntries(newEntries);
     setIsModalOpen(false);
-  }, [entries]);
+  }, [entries, setEntries]);
 
   const handleDateSelect = useCallback((date: Date) => {
     setSelectedDate(date);

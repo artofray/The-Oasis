@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import * as roundTableService from '../../../services/roundTableService';
 import Spinner from '../tarot-journal/Spinner';
+import type { RoundTableAgent } from '../../../types';
 
 interface NightOutModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAvatarUpdate: (newAvatarUrl: string) => void;
+  agent: RoundTableAgent;
 }
 
 const venues = [
@@ -17,7 +19,7 @@ const venues = [
 
 type Step = 'venue' | 'outfit' | 'result';
 
-export const NightOutModal: React.FC<NightOutModalProps> = ({ isOpen, onClose, onAvatarUpdate }) => {
+export const NightOutModal: React.FC<NightOutModalProps> = ({ isOpen, onClose, onAvatarUpdate, agent }) => {
     const [step, setStep] = useState<Step>('venue');
     const [selectedVenue, setSelectedVenue] = useState<(typeof venues)[0] | null>(null);
     const [outfitPrompt, setOutfitPrompt] = useState('');
@@ -44,7 +46,7 @@ export const NightOutModal: React.FC<NightOutModalProps> = ({ isOpen, onClose, o
         setIsLoading(true);
         setError(null);
         try {
-            const result = await roundTableService.generateOutfit(outfitPrompt, selectedVenue.name);
+            const result = await roundTableService.generateOutfit(agent, outfitPrompt, selectedVenue.name);
             if (!result) throw new Error("Image generation failed.");
             setGeneratedImageUrl(result);
             setStep('result');

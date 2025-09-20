@@ -19,10 +19,11 @@ const NEW_AGENT_TEMPLATE: Omit<RoundTableAgent, 'id'> = {
 interface RoundTableViewProps {
     agents: RoundTableAgent[];
     setAgents: (agents: RoundTableAgent[] | ((prev: RoundTableAgent[]) => RoundTableAgent[])) => void;
+    messages: ChatMessage[];
+    setMessages: (messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
 }
 
-export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgents }) => {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgents, messages, setMessages }) => {
     const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
     const [mode, setMode] = useState<ChatMode>('round_table');
     const [isLoading, setIsLoading] = useState(false);
@@ -103,7 +104,7 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
         return () => {
             Object.values(intervals).forEach(clearInterval);
         };
-    }, [messages]);
+    }, [messages, setMessages]);
 
     const handleAgentToggle = (agentId: string) => {
         setSelectedAgentIds(prev => {
@@ -139,65 +140,93 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
         setModalState({ isOpen: false, agent: null });
     }
 
-    const handleSendMessage = useCallback(async (prompt: string) => {
-        if (isLoading || !prompt || selectedAgentIds.size === 0) return;
-
+    const handleSendMessage = useCallback(async (prompt: string, file?: File) => {
+        if (isLoading || (!prompt && !file) || selectedAgentIds.size === 0) return;
         setIsLoading(true);
-
-        const userMessage: ChatMessage = {
-            id: `user-${Date.now()}`,
-            author: 'User',
-            text: prompt,
-        };
-
-        const currentMessages: ChatMessage[] = [...messages, userMessage];
-        setMessages(currentMessages);
-        
-        const selectedAgents = agents.filter(agent => selectedAgentIds.has(agent.id));
-
-        for (const agent of selectedAgents) {
-            const agentLoadingMessage: ChatMessage = {
-                id: `loading-${agent.id}-${Date.now()}`,
-                author: agent.name,
-                text: '...',
-                agent: agent,
+    
+        const processAndSend = async (fileContent?: string) => {
+            const userMessage: ChatMessage = {
+                id: `user-${Date.now()}`,
+                author: 'User',
+                text: prompt,
+                fileName: file?.name,
+                fileType: file?.type,
+                fileContent: fileContent,
             };
-            setMessages(prev => [...prev, agentLoadingMessage]);
-
-            const response = await roundTableService.generateAgentResponse(
-                agent,
-                currentMessages,
-                prompt,
-                webAccess
-            );
+    
+            // This will be the history for API calls, and we'll add to it as agents respond.
+            const conversationHistoryForApi = [...messages, userMessage];
             
-            if (isAudioEnabled) {
-                const agentVoice = agentVoiceMap[agent.id];
-                const speechOptions: { voice?: SpeechSynthesisVoice; pitch?: number; rate?: number } = { voice: agentVoice };
+            // Add user message to UI state.
+            setMessages(prevMessages => [...prevMessages, userMessage]);
+            
+            const selectedAgents = agents.filter(agent => selectedAgentIds.has(agent.id));
+    
+            for (const agent of selectedAgents) {
+                const agentLoadingMessageId = `loading-${agent.id}-${Date.now()}`;
                 
-                if (agent.voiceCloned) {
-                    const hash = agent.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                    speechOptions.pitch = 1 + (hash % 5) / 10 - 0.2; // Range 0.8 to 1.2
-                    speechOptions.rate = 1 + (hash % 3) / 10 - 0.1;  // Range 0.9 to 1.1
+                // Add loading message to UI.
+                setMessages(prevMessages => [...prevMessages, {
+                    id: agentLoadingMessageId,
+                    author: agent.name,
+                    text: '...',
+                    agent: agent,
+                }]);
+    
+                const response = await roundTableService.generateAgentResponse(
+                    agent,
+                    conversationHistoryForApi, // Pass the up-to-date history
+                    webAccess
+                );
+                
+                if (isAudioEnabled) {
+                    const agentVoice = agentVoiceMap[agent.id];
+                    const speechOptions: { voice?: SpeechSynthesisVoice; pitch?: number; rate?: number } = { voice: agentVoice };
+                    
+                    if (agent.voiceCloned) {
+                        const hash = agent.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                        speechOptions.pitch = 1 + (hash % 5) / 10 - 0.2; // Range 0.8 to 1.2
+                        speechOptions.rate = 1 + (hash % 3) / 10 - 0.1;  // Range 0.9 to 1.1
+                    }
+    
+                    speak(response.text, speechOptions);
                 }
-
-                speak(response.text, speechOptions);
+                
+                const agentResponseMessage: ChatMessage = {
+                    id: `${agent.id}-${Date.now()}`,
+                    author: agent.name,
+                    text: response.text,
+                    sources: response.sources,
+                    agent: agent,
+                };
+    
+                // Add the real response to our API history for the next agent in the loop.
+                conversationHistoryForApi.push(agentResponseMessage);
+                
+                // Update UI by replacing the loading message with the real one.
+                setMessages(prevMessages => prevMessages.map(msg => 
+                    msg.id === agentLoadingMessageId ? agentResponseMessage : msg
+                ));
             }
-            
-            const agentResponseMessage: ChatMessage = {
-                id: `${agent.id}-${Date.now()}`,
-                author: agent.name,
-                text: response.text,
-                sources: response.sources,
-                agent: agent,
+            setIsLoading(false);
+        };
+    
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                processAndSend(event.target?.result as string);
             };
-            
-            setMessages(prev => prev.map(msg => msg.id === agentLoadingMessage.id ? agentResponseMessage : msg));
-            currentMessages.push(agentResponseMessage);
+            reader.onerror = () => {
+                console.error("Error reading file.");
+                setIsLoading(false);
+            }
+            reader.readAsText(file);
+        } else {
+            processAndSend();
         }
+    
+    }, [isLoading, selectedAgentIds, messages, webAccess, agents, isAudioEnabled, speak, agentVoiceMap, setMessages]);
 
-        setIsLoading(false);
-    }, [isLoading, selectedAgentIds, messages, webAccess, agents, isAudioEnabled, speak, agentVoiceMap]);
 
     const handleSendMedia = async (type: 'image' | 'video' | 'audio', prompt: string) => {
         if (isLoading || !prompt) return;

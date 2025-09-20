@@ -83,19 +83,25 @@ export const useSpeech = () => {
             const recognition = new SpeechRecognitionImpl();
             recognitionRef.current = recognition;
 
-            recognition.continuous = false;
-            recognition.interimResults = false;
+            recognition.continuous = true;
+            recognition.interimResults = true;
             recognition.lang = 'en-US';
 
             recognition.onresult = (event: any) => {
-                const currentTranscript = event.results[0][0].transcript;
-                if (isMountedRef.current) {
-                    setTranscript(currentTranscript);
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = 0; i < event.results.length; i++) {
+                    const transcriptPart = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcriptPart;
+                    } else {
+                        interimTranscript += transcriptPart;
+                    }
                 }
-                try {
-                    recognitionRef.current?.stop();
-                } catch (err) {
-                    console.error("Error stopping recognition in onresult:", err);
+                
+                if (isMountedRef.current) {
+                    setTranscript(finalTranscript + interimTranscript);
                 }
             };
 
@@ -166,8 +172,12 @@ export const useSpeech = () => {
             utterance.onend = () => {
                 if (isMountedRef.current) setIsSpeaking(false);
             };
-            utterance.onerror = (e) => {
-                console.error("Speech synthesis error", e);
+            utterance.onerror = (e: any) => {
+                // The 'canceled' error is expected when speech is interrupted intentionally.
+                // We don't need to log it as a critical error.
+                if (e.error !== 'canceled') {
+                    console.error("Speech synthesis error:", e.error);
+                }
                 if (isMountedRef.current) setIsSpeaking(false);
             };
             

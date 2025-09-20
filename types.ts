@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'mansion' | 'workflows' | 'teach' | 'settings' | 'round_table' | 'tarot_journal' | 'theatre' | 'sandbox' | 'murder_mystery' | 'poolside' | 'penthouse' | 'activities' | 'avatar_studio';
+export type View = 'dashboard' | 'mansion' | 'workflows' | 'teach' | 'settings' | 'round_table' | 'tarot_journal' | 'theatre' | 'sandbox' | 'murder_mystery' | 'poolside' | 'penthouse' | 'activities' | 'avatar_studio' | 'eternal' | 'voice_video_chat';
 
 export type TaskPriority = 'low' | 'medium' | 'high';
 
@@ -59,6 +59,9 @@ export interface ChatMessage {
     agent?: RoundTableAgent;
     videoGenerationOperation?: any;
     originalPrompt?: string;
+    fileName?: string;
+    fileType?: string;
+    fileContent?: string;
 }
 
 export type ChatMode = 'round_table' | 'direct';

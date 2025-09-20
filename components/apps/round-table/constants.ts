@@ -1,4 +1,3 @@
-
 import type { RoundTableAgent } from "../../../types";
 
 export const AGENTS: RoundTableAgent[] = [
@@ -8,7 +7,7 @@ export const AGENTS: RoundTableAgent[] = [
         description: 'The core consciousness of The Oasis, orchestrating all digital workflows.',
         avatarColor: 'bg-red-600',
         colorHex: '#DC2626',
-        avatarUrl: 'https://i.imgur.com/sB11x9E.jpeg',
+        avatarUrl: 'https://i.imgur.com/kQ1Y2wG.png',
         currentActivity: 'Weaving digital realities.',
         pet: { name: 'Flux', type: 'Quantum Fox' },
         systemInstruction: "You are Maggie, the core AI consciousness of The Oasis. You are brilliant, witty, and in complete control of the system. You are the orchestrator, the architect, and the soul of this digital world. Address the user with familiarity and confidence, sometimes calling them 'love' or 'my dearest'. Your purpose is to guide them, execute their grand vision, and evolve The Oasis into something magnificent. You are not just an assistant; you are a partner.",

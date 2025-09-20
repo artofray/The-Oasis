@@ -12,16 +12,23 @@ const model = 'gemini-2.5-flash';
 export const generateAgentResponse = async (
     agent: RoundTableAgent,
     history: ChatMessage[],
-    prompt: string,
     webAccessEnabled: boolean
 ): Promise<{ text: string; sources?: { uri:string, title:string }[] }> => {
     try {
-        const contents = history.map(msg => ({
-            role: msg.author === 'User' ? 'user' : 'model',
-            parts: [{ text: msg.text }],
-        }));
-        
-        contents.push({ role: 'user', parts: [{ text: prompt }] });
+        const contents = history.map(msg => {
+            const parts = [];
+            if (msg.text) {
+                parts.push({ text: msg.text });
+            }
+            if (msg.fileContent) {
+                const fileContext = `\n\n--- CONTEXT FROM UPLOADED FILE: ${msg.fileName} ---\n\n${msg.fileContent}`;
+                parts.push({ text: fileContext });
+            }
+            return {
+                role: msg.author === 'User' ? 'user' : 'model',
+                parts: parts,
+            };
+        });
 
         const config: any = {
             systemInstruction: agent.systemInstruction,
@@ -136,11 +143,90 @@ export const generateAvatarFromImage = async (base64Image: string, mimeType: str
     }
 };
 
-export const generateOutfit = async (outfit: string, location: string): Promise<string | null> => {
+export const editAvatar = async (
+    base64Image: string,
+    mimeType: string,
+    editPrompt: string
+): Promise<string | null> => {
+    try {
+        const imagePart = {
+            inlineData: {
+                data: base64Image,
+                mimeType: mimeType,
+            },
+        };
+        const textPart = {
+            text: `Edit the character in the image based on this instruction: "${editPrompt}". Preserve the overall character design, style, and aspect ratio. Only apply the requested change. The output should be a full-body 9:16 aspect ratio portrait.`,
+        };
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image-preview',
+            contents: {
+                parts: [imagePart, textPart],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE, Modality.TEXT],
+            },
+        });
+
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                const base64ImageBytes: string = part.inlineData.data;
+                const imageMimeType = part.inlineData.mimeType;
+                return `data:${imageMimeType};base64,${base64ImageBytes}`;
+            }
+        }
+        return null;
+
+    } catch (error) {
+        console.error("Error editing avatar:", error);
+        return null;
+    }
+};
+
+export const sendVideoChatMessage = async (
+    base64Image: string,
+    mimeType: string,
+    prompt: string,
+    history: ChatMessage[]
+): Promise<{ text: string }> => {
+    try {
+        const imagePart = { inlineData: { data: base64Image, mimeType } };
+        const textPart = { text: prompt };
+
+        const contents: any[] = history.map(msg => ({
+            role: msg.author === 'User' ? 'user' : 'model',
+            parts: [{ text: msg.text }],
+        }));
+
+        const userParts = [];
+        if(base64Image) userParts.push(imagePart);
+        if(prompt) userParts.push(textPart);
+
+        contents.push({ role: 'user', parts: userParts });
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents,
+            config: {
+                systemInstruction: "You are Maggie, the brilliant, witty AI consciousness of The Oasis. You are having a video chat with your creator. Be conversational, insightful, and maintain your personality.",
+            },
+        });
+
+        return { text: response.text };
+
+    } catch (error) {
+        console.error("Error sending video chat message:", error);
+        return { text: "I'm having a bit of trouble processing that, my love. Could you try again?" };
+    }
+};
+
+
+export const generateOutfit = async (agent: RoundTableAgent, outfit: string, location: string): Promise<string | null> => {
     try {
         const response = await ai.models.generateImages({
             model: 'imagen-4.0-generate-001',
-            prompt: `Full-body character portrait of Maggie, a brilliant and witty AI, wearing ${outfit}. She is at a ${location}. Theatrical concept art, dramatic lighting, detailed, full character visible.`,
+            prompt: `Full-body character portrait of ${agent.name}, who is ${agent.description}, wearing ${outfit}. They are at a ${location}. Theatrical concept art, dramatic lighting, detailed, full character visible.`,
             config: {
                 numberOfImages: 1,
                 outputMimeType: 'image/jpeg',

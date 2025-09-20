@@ -26,16 +26,37 @@ const MyAiAvatar: React.FC<{ avatarUrl: string; isSpeaking: boolean }> = ({ avat
     </div>
 );
 
-const PriorityIndicator: React.FC<{ priority: TaskPriority }> = ({ priority }) => {
-    const priorityStyles: { [key in TaskPriority]: string } = {
-        high: 'bg-fuchsia-500/80 text-fuchsia-200',
-        medium: 'bg-amber-500/80 text-amber-200',
-        low: 'bg-cyan-500/80 text-cyan-200',
+const StatusIndicator: React.FC<{ status: 'idle' | 'working' | 'complete' }> = ({ status }) => {
+    const statusStyles = {
+        idle: {
+            dot: 'bg-gray-500',
+            text: 'text-gray-400',
+            label: 'Idle',
+            pulse: false,
+        },
+        working: {
+            dot: 'bg-fuchsia-500',
+            text: 'text-fuchsia-400',
+            label: 'Working',
+            pulse: true,
+        },
+        complete: {
+            dot: 'bg-green-500',
+            text: 'text-green-400',
+            label: 'Complete',
+            pulse: false,
+        },
     };
+
+    const currentStatus = statusStyles[status];
+
     return (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${priorityStyles[priority]} flex-shrink-0`}>
-            {priority.charAt(0).toUpperCase() + priority.slice(1)}
-        </span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+            <div className={`w-2 h-2 rounded-full ${currentStatus.dot} ${currentStatus.pulse ? 'animate-pulse' : ''}`}></div>
+            <span className={`text-xs font-semibold ${currentStatus.text}`}>
+                {currentStatus.label}
+            </span>
+        </div>
     );
 };
 
@@ -53,16 +74,12 @@ export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, ag
     const { displayText: typedAiMessage } = useTypedText(aiMessage, 25);
     
     const inputRef = useRef<HTMLInputElement>(null);
-    const workTimeoutRef = useRef<number | null>(null);
+    const previousIsListening = useRef(false);
     
     const processCommand = useCallback(async (commandText: string) => {
         if (!commandText || isLoading) return;
-        
-        if (workTimeoutRef.current) clearTimeout(workTimeoutRef.current);
 
         setIsLoading(true);
-        setCloudAgents(prev => prev.map(a => ({ ...a, status: 'working', task: { description: `Processing...`, priority: 'medium' } })));
-        
         const response: CommandResponse = await processNaturalLanguageCommand(commandText);
         
         setAiMessage(response.message);
@@ -71,25 +88,62 @@ export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, ag
         if (response.action === 'switch_view' && response.payload) {
             setCurrentView(response.payload as View);
         } else if (response.action === 'task_assigned') {
-            setCloudAgents(prev => prev.map(a => ({ ...a, status: 'working', task: { description: response.message, priority: response.payload.priority } })));
+            
+            // FIX: Refactored the state update logic to remove side-effects from the setState updater and fix type inference.
+            // The `isLoading` flag ensures that `cloudAgents` is stable during this async operation.
+            const idleAgentIndex = cloudAgents.findIndex(a => a.status === 'idle');
+            const agentToAssignIndex = idleAgentIndex !== -1 ? idleAgentIndex : 0;
+
+            // 1. Set agent to 'working'
+            setCloudAgents(prevAgents => prevAgents.map((agent, index) => {
+                if (index === agentToAssignIndex) {
+                    return { ...agent, status: 'working', task: { description: response.message, priority: response.payload.priority as TaskPriority } };
+                }
+                return agent;
+            }));
+
+            const workDuration = Math.random() * 4000 + 3000; // 3-7 seconds
+            const completeDuration = 2000; // 2 seconds
+
+            // Set agent to 'complete' after work is done
+            setTimeout(() => {
+                setCloudAgents(currentAgents => currentAgents.map((agent, index) => {
+                    if (index === agentToAssignIndex) {
+                        const newPoints = agent.points + Math.floor(Math.random() * 10) + 5; // Reward points
+                        return { ...agent, status: 'complete', points: newPoints, task: { ...agent.task, description: 'Task Complete!' } };
+                    }
+                    return agent;
+                }));
+            }, workDuration);
+
+            // Set agent back to 'idle' after showing 'complete'
+            setTimeout(() => {
+                setCloudAgents(currentAgents => currentAgents.map((agent, index) => {
+                    if (index === agentToAssignIndex) {
+                        return { ...agent, status: 'idle', task: { description: 'Idle', priority: 'low' } };
+                    }
+                    return agent;
+                }));
+                inputRef.current?.focus();
+            }, workDuration + completeDuration);
         }
         
         setPrompt('');
         setIsLoading(false);
-        
-        workTimeoutRef.current = window.setTimeout(() => {
-            setCloudAgents(prev => prev.map(a => ({ ...a, status: 'idle', task: { description: 'Idle', priority: 'low' } })));
-            inputRef.current?.focus();
-        }, 4000);
 
-    }, [isLoading, setCurrentView, speak]);
+    }, [isLoading, setCurrentView, speak, cloudAgents]);
 
     useEffect(() => {
-        if (transcript) {
-            setPrompt(transcript);
-            processCommand(transcript);
+        setPrompt(transcript);
+    }, [transcript]);
+
+    useEffect(() => {
+        if (previousIsListening.current && !isListening && transcript.trim()) {
+            processCommand(transcript.trim());
         }
-    }, [transcript, processCommand]);
+        previousIsListening.current = isListening;
+    }, [isListening, transcript, processCommand]);
+
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -107,20 +161,28 @@ export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, ag
             <GlassCard className="flex-1 p-4 flex flex-col">
                  <h3 className="text-lg font-semibold text-amber-400 mb-2">Cloud Employees</h3>
                  <div className="space-y-3 overflow-y-auto pr-2">
-                     {cloudAgents.map(agent => (
-                         <div key={agent.id} className="text-sm bg-black/20 p-2 rounded-lg">
-                             <div className="flex justify-between items-center mb-1">
-                                 <span className="font-bold">{agent.name}</span>
-                                 <span className="text-cyan-400">{agent.points} pts</span>
+                     {cloudAgents.map(agent => {
+                         const taskDescriptionStyle = {
+                            idle: 'text-gray-400',
+                            working: 'text-fuchsia-400 animate-pulse',
+                            complete: 'text-green-400',
+                         }[agent.status];
+
+                         return (
+                             <div key={agent.id} className="text-sm bg-black/20 p-2 rounded-lg">
+                                 <div className="flex justify-between items-center mb-1">
+                                     <span className="font-bold">{agent.name}</span>
+                                     <span className="text-cyan-400">{agent.points} pts</span>
+                                 </div>
+                                 <div className="flex justify-between items-center gap-2">
+                                    <p className={`text-xs truncate ${taskDescriptionStyle}`}>
+                                        {agent.task.description}
+                                    </p>
+                                    <StatusIndicator status={agent.status} />
+                                </div>
                              </div>
-                             <div className="flex justify-between items-center gap-2">
-                                <p className={`text-xs truncate ${agent.status === 'working' ? 'text-fuchsia-400 animate-pulse' : 'text-gray-400'}`}>
-                                    {agent.task.description}
-                                </p>
-                                <PriorityIndicator priority={agent.task.priority} />
-                            </div>
-                         </div>
-                     ))}
+                         )
+                    })}
                  </div>
             </GlassCard>
             

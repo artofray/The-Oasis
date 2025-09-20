@@ -85,12 +85,25 @@ const AvatarStudioIcon = () => (
         <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
     </svg>
 );
+const EternalIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(45 12 12)" />
+        <ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-45 12 12)" />
+        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+    </svg>
+);
+const VoiceVideoChatIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+    </svg>
+);
 
 
 const NAV_ITEMS: { id: View; name: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', name: 'Dashboard', icon: <DashboardIcon /> },
     { id: 'penthouse', name: 'Penthouse', icon: <PenthouseIcon /> },
     { id: 'avatar_studio', name: 'Avatar Studio', icon: <AvatarStudioIcon /> },
+    { id: 'voice_video_chat', name: 'Voice & Video Chat', icon: <VoiceVideoChatIcon /> },
     { id: 'activities', name: 'Activities', icon: <ActivitiesIcon /> },
     { id: 'mansion', name: 'Mansion', icon: <MansionIcon /> },
     { id: 'theatre', name: 'Theatre', icon: <TheatreIcon /> },
@@ -101,6 +114,7 @@ const NAV_ITEMS: { id: View; name: string; icon: React.ReactNode }[] = [
     { id: 'teach', name: 'Teach Agent', icon: <TeachIcon /> },
     { id: 'round_table', name: 'AI Round Table', icon: <RoundTableIcon /> },
     { id: 'tarot_journal', name: 'AI Tarot Journal', icon: <TarotIcon /> },
+    { id: 'eternal', name: 'Eternal', icon: <EternalIcon /> },
     { id: 'settings', name: 'Settings', icon: <SettingsIcon /> },
 ];
 
