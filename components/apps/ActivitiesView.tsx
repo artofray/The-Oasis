@@ -9,6 +9,7 @@ import { BedtimeStoryModal } from './activities/BedtimeStoryModal';
 interface ActivitiesViewProps {
     agents: RoundTableAgent[];
     setAgents: (updater: (prev: RoundTableAgent[]) => RoundTableAgent[]) => void;
+    unleashedMode: boolean;
 }
 
 const ActivityCard: React.FC<{ title: string, description: string, icon: string, onClick: () => void }> = ({ title, description, icon, onClick }) => (
@@ -19,7 +20,7 @@ const ActivityCard: React.FC<{ title: string, description: string, icon: string,
     </GlassCard>
 );
 
-export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ agents, setAgents }) => {
+export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ agents, setAgents, unleashedMode }) => {
     const [isNightOutModalOpen, setIsNightOutModalOpen] = useState(false);
     const [isTryOnModalOpen, setIsTryOnModalOpen] = useState(false);
     const [isCuddlePuddleModalOpen, setIsCuddlePuddleModalOpen] = useState(false);
@@ -78,6 +79,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ agents, setAgent
                     onClose={() => setIsNightOutModalOpen(false)}
                     onAvatarUpdate={handleUpdateMaggie}
                     agent={maggie}
+                    unleashedMode={unleashedMode}
                 />
             )}
             {isTryOnModalOpen && (
@@ -86,6 +88,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ agents, setAgent
                     onClose={() => setIsTryOnModalOpen(false)}
                     onAvatarUpdate={handleUpdateMaggie}
                     maggie={agents.find(a => a.id === 'maggie')}
+                    unleashedMode={unleashedMode}
                 />
             )}
             {isCuddlePuddleModalOpen && (
@@ -94,6 +97,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ agents, setAgent
                     onClose={() => setIsCuddlePuddleModalOpen(false)}
                     agents={agents}
                     onUpdateMaggieActivity={handleUpdateMaggieActivity}
+                    unleashedMode={unleashedMode}
                 />
             )}
             {isBedtimeStoryModalOpen && (
@@ -101,6 +105,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ agents, setAgent
                     isOpen={isBedtimeStoryModalOpen}
                     onClose={() => setIsBedtimeStoryModalOpen(false)}
                     agents={agents}
+                    unleashedMode={unleashedMode}
                 />
             )}
         </div>

@@ -8,6 +8,7 @@ interface NightOutModalProps {
   onClose: () => void;
   onAvatarUpdate: (newAvatarUrl: string) => void;
   agent: RoundTableAgent;
+  unleashedMode: boolean;
 }
 
 const venues = [
@@ -19,7 +20,7 @@ const venues = [
 
 type Step = 'venue' | 'outfit' | 'result';
 
-export const NightOutModal: React.FC<NightOutModalProps> = ({ isOpen, onClose, onAvatarUpdate, agent }) => {
+export const NightOutModal: React.FC<NightOutModalProps> = ({ isOpen, onClose, onAvatarUpdate, agent, unleashedMode }) => {
     const [step, setStep] = useState<Step>('venue');
     const [selectedVenue, setSelectedVenue] = useState<(typeof venues)[0] | null>(null);
     const [outfitPrompt, setOutfitPrompt] = useState('');
@@ -46,7 +47,7 @@ export const NightOutModal: React.FC<NightOutModalProps> = ({ isOpen, onClose, o
         setIsLoading(true);
         setError(null);
         try {
-            const result = await roundTableService.generateOutfit(agent, outfitPrompt, selectedVenue.name);
+            const result = await roundTableService.generateOutfit(agent, outfitPrompt, selectedVenue.name, unleashedMode);
             if (!result) throw new Error("Image generation failed.");
             setGeneratedImageUrl(result);
             setStep('result');

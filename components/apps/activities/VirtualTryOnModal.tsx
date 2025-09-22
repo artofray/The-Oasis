@@ -9,9 +9,10 @@ interface VirtualTryOnModalProps {
   onClose: () => void;
   onAvatarUpdate: (newAvatarUrl: string) => void;
   maggie?: RoundTableAgent;
+  unleashedMode: boolean;
 }
 
-export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({ isOpen, onClose, onAvatarUpdate, maggie }) => {
+export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({ isOpen, onClose, onAvatarUpdate, maggie, unleashedMode }) => {
     const [prompt, setPrompt] = useState('');
     const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +56,8 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({ isOpen, on
                 maggie.avatarUrl,
                 clothingImageBase64,
                 clothingImage.file.type,
-                prompt || "A realistic, full-body portrait."
+                prompt || "A realistic, full-body portrait.",
+                unleashedMode
             );
             if (!result) throw new Error("Image generation failed.");
             setGeneratedImageUrl(result);

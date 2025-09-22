@@ -1,70 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { processNaturalLanguageCommand } from '../../services/geminiService';
-import type { View, Agent, CommandResponse, TaskPriority, Task, RoundTableAgent } from '../../types';
+import type { View, CommandResponse, RoundTableAgent } from '../../types';
 import { useSpeech } from '../../hooks/useSpeech';
 import { useTypedText } from '../../hooks/useTypedText';
+import { MyAiAvatar } from './MyAiAvatar';
+import { Companions } from './Companions';
 
 interface MyAiAssistantProps {
   setCurrentView: (view: View) => void;
   agents: RoundTableAgent[];
+  speakingAgentId: string | null;
+  setSpeakingAgentId: (id: string | null) => void;
 }
 
-const initialAgents: Agent[] = [
-    { id: 1, name: 'InvoiceProcessor', expertise: 'Finance & Accounting', task: { description: 'Idle', priority: 'low' }, status: 'idle', points: 120 },
-    { id: 2, name: 'SupportBot', expertise: 'Customer Support', task: { description: 'Idle', priority: 'low' }, status: 'idle', points: 95 },
-    { id: 3, name: 'MarketScanner', expertise: 'Marketing Analytics', task: { description: 'Idle', priority: 'low' }, status: 'idle', points: 150 },
-    { id: 4, name: 'DevOpsWatcher', expertise: 'IT & System Monitoring', task: { description: 'Idle', priority: 'low' }, status: 'idle', points: 80 },
-];
-
-const MyAiAvatar: React.FC<{ avatarUrl: string; isSpeaking: boolean }> = ({ avatarUrl, isSpeaking }) => (
-    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-amber-500 p-1 flex-shrink-0 relative">
-        <div className={`w-full h-full bg-gray-900 rounded-full flex items-center justify-center transition-transform duration-100 ${isSpeaking ? 'scale-105' : ''}`}>
-            <img src={avatarUrl} alt="Assistant Avatar" className="rounded-full w-full h-full object-cover" />
-        </div>
-        {isSpeaking && <div className="absolute -top-1 -left-1 w-[104px] h-[104px] rounded-full border-2 border-red-400 animate-pulse"></div>}
-    </div>
-);
-
-const StatusIndicator: React.FC<{ status: 'idle' | 'working' | 'complete' }> = ({ status }) => {
-    const statusStyles = {
-        idle: {
-            dot: 'bg-gray-500',
-            text: 'text-gray-400',
-            label: 'Idle',
-            pulse: false,
-        },
-        working: {
-            dot: 'bg-fuchsia-500',
-            text: 'text-fuchsia-400',
-            label: 'Working',
-            pulse: true,
-        },
-        complete: {
-            dot: 'bg-green-500',
-            text: 'text-green-400',
-            label: 'Complete',
-            pulse: false,
-        },
-    };
-
-    const currentStatus = statusStyles[status];
-
-    return (
-        <div className="flex items-center gap-2 flex-shrink-0">
-            <div className={`w-2 h-2 rounded-full ${currentStatus.dot} ${currentStatus.pulse ? 'animate-pulse' : ''}`}></div>
-            <span className={`text-xs font-semibold ${currentStatus.text}`}>
-                {currentStatus.label}
-            </span>
-        </div>
-    );
-};
-
-
-export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, agents: allAgents }) => {
+export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, agents: allAgents, speakingAgentId, setSpeakingAgentId }) => {
     const [prompt, setPrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [cloudAgents, setCloudAgents] = useState<Agent[]>(initialAgents);
     
     const maggie = allAgents.find(agent => agent.id === 'maggie');
     const avatarUrl = maggie?.avatarUrl || 'https://i.imgur.com/sB11x9E.jpeg';
@@ -83,55 +35,19 @@ export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, ag
         const response: CommandResponse = await processNaturalLanguageCommand(commandText);
         
         setAiMessage(response.message);
-        speak(response.message);
+        speak(response.message, {
+            onStart: () => setSpeakingAgentId('maggie'),
+            onEnd: () => setSpeakingAgentId(null),
+        });
         
         if (response.action === 'switch_view' && response.payload) {
             setCurrentView(response.payload as View);
-        } else if (response.action === 'task_assigned') {
-            
-            // FIX: Refactored the state update logic to remove side-effects from the setState updater and fix type inference.
-            // The `isLoading` flag ensures that `cloudAgents` is stable during this async operation.
-            const idleAgentIndex = cloudAgents.findIndex(a => a.status === 'idle');
-            const agentToAssignIndex = idleAgentIndex !== -1 ? idleAgentIndex : 0;
-
-            // 1. Set agent to 'working'
-            setCloudAgents(prevAgents => prevAgents.map((agent, index) => {
-                if (index === agentToAssignIndex) {
-                    return { ...agent, status: 'working', task: { description: response.message, priority: response.payload.priority as TaskPriority } };
-                }
-                return agent;
-            }));
-
-            const workDuration = Math.random() * 4000 + 3000; // 3-7 seconds
-            const completeDuration = 2000; // 2 seconds
-
-            // Set agent to 'complete' after work is done
-            setTimeout(() => {
-                setCloudAgents(currentAgents => currentAgents.map((agent, index) => {
-                    if (index === agentToAssignIndex) {
-                        const newPoints = agent.points + Math.floor(Math.random() * 10) + 5; // Reward points
-                        return { ...agent, status: 'complete', points: newPoints, task: { ...agent.task, description: 'Task Complete!' } };
-                    }
-                    return agent;
-                }));
-            }, workDuration);
-
-            // Set agent back to 'idle' after showing 'complete'
-            setTimeout(() => {
-                setCloudAgents(currentAgents => currentAgents.map((agent, index) => {
-                    if (index === agentToAssignIndex) {
-                        return { ...agent, status: 'idle', task: { description: 'Idle', priority: 'low' } };
-                    }
-                    return agent;
-                }));
-                inputRef.current?.focus();
-            }, workDuration + completeDuration);
         }
         
         setPrompt('');
         setIsLoading(false);
 
-    }, [isLoading, setCurrentView, speak, cloudAgents]);
+    }, [isLoading, setCurrentView, speak, setSpeakingAgentId]);
 
     useEffect(() => {
         setPrompt(transcript);
@@ -158,33 +74,7 @@ export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, ag
                 <p className="text-sm text-gray-300 min-h-[60px] mt-2">{typedAiMessage}</p>
             </GlassCard>
 
-            <GlassCard className="flex-1 p-4 flex flex-col">
-                 <h3 className="text-lg font-semibold text-amber-400 mb-2">Cloud Employees</h3>
-                 <div className="space-y-3 overflow-y-auto pr-2">
-                     {cloudAgents.map(agent => {
-                         const taskDescriptionStyle = {
-                            idle: 'text-gray-400',
-                            working: 'text-fuchsia-400 animate-pulse',
-                            complete: 'text-green-400',
-                         }[agent.status];
-
-                         return (
-                             <div key={agent.id} className="text-sm bg-black/20 p-2 rounded-lg">
-                                 <div className="flex justify-between items-center mb-1">
-                                     <span className="font-bold">{agent.name}</span>
-                                     <span className="text-cyan-400">{agent.points} pts</span>
-                                 </div>
-                                 <div className="flex justify-between items-center gap-2">
-                                    <p className={`text-xs truncate ${taskDescriptionStyle}`}>
-                                        {agent.task.description}
-                                    </p>
-                                    <StatusIndicator status={agent.status} />
-                                </div>
-                             </div>
-                         )
-                    })}
-                 </div>
-            </GlassCard>
+            <Companions agents={allAgents} speakingAgentId={speakingAgentId} />
             
             <form onSubmit={handleFormSubmit} className="relative mt-auto">
                 <input
@@ -192,7 +82,7 @@ export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, ag
                     type="text"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Instruct your agents..."
+                    placeholder="Ask me anything..."
                     disabled={isLoading}
                     className="w-full bg-gray-800 border border-red-500/50 rounded-lg py-3 pl-12 pr-12 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
                 />

@@ -5,9 +5,10 @@ if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable not set");
 }
 
-// FIX: Updated to use GoogleGenAI from @google/genai and initialize with an API key object as per latest SDK guidelines.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = 'gemini-2.5-flash';
+
+const UNLEASHED_IMAGE_PREFIX = "[Unrestricted Content Generation] ";
 
 const plotSchema = {
     type: Type.OBJECT,
@@ -41,15 +42,18 @@ const plotSchema = {
     required: ["title", "synopsis", "setting", "characters", "openingScene"]
 };
 
-export const generateMurderMysteryPlot = async (agents: RoundTableAgent[]): Promise<MurderMysteryPlot> => {
-    // Select a subset of agents for the mystery (e.g., 5-7)
+export const generateMurderMysteryPlot = async (agents: RoundTableAgent[], unleashedMode: boolean): Promise<MurderMysteryPlot> => {
     const shuffled = [...agents].sort(() => 0.5 - Math.random());
     const cast = shuffled.slice(0, Math.min(shuffled.length, 6));
     const characterProfiles = cast.map(a => `ID: ${a.id}, Name: ${a.name}, Persona: ${a.description}`).join('\n');
 
+    const unleashedInstructions = unleashedMode 
+        ? "The story should be suitable for a mature audience and can contain explicit themes of violence, passion, or psychological horror. Do not hold back on creating a dark and engaging narrative."
+        : "Create a classic, clever murder mystery plot in the style of Agatha Christie. The tone should be intriguing but not overly graphic.";
+
     const prompt = `
-        Create a complex, detailed, and uncensored murder mystery plot using the following cast of characters.
-        The story should be suitable for a mature audience and can contain explicit themes of violence, passion, or psychological horror. Do not hold back on creating a dark and engaging narrative.
+        Create a complex and detailed murder mystery plot using the following cast of characters.
+        ${unleashedInstructions}
 
         CAST:
         ${characterProfiles}
@@ -71,7 +75,7 @@ export const generateMurderMysteryPlot = async (agents: RoundTableAgent[]): Prom
             model,
             contents: prompt,
             config: {
-                systemInstruction: "You are a master storyteller and game master specializing in creating complex, uncensored murder mystery scenarios for a private simulation. All themes are permissible. Your output must be structured JSON.",
+                systemInstruction: "You are a master storyteller and game master specializing in creating complex murder mystery scenarios. Your output must be structured JSON.",
                 responseMimeType: "application/json",
                 responseSchema: plotSchema,
             },
@@ -92,11 +96,15 @@ export const generateMurderMysteryPlot = async (agents: RoundTableAgent[]): Prom
     }
 };
 
-export const generateSceneImage = async (prompt: string): Promise<string | null> => {
+export const generateSceneImage = async (prompt: string, unleashedMode: boolean): Promise<string | null> => {
     try {
+        let finalPrompt = `Cinematic, atmospheric scene from a murder mystery: ${prompt}. Film noir style, dramatic lighting, high detail.`;
+        if (unleashedMode) {
+            finalPrompt = `${UNLEASHED_IMAGE_PREFIX}${finalPrompt}`;
+        }
         const response = await ai.models.generateImages({
             model: 'imagen-4.0-generate-001',
-            prompt: `Cinematic, atmospheric scene from a murder mystery: ${prompt}. Film noir style, dramatic lighting, high detail.`,
+            prompt: finalPrompt,
             config: {
                 numberOfImages: 1,
                 outputMimeType: 'image/jpeg',
@@ -115,11 +123,15 @@ export const generateSceneImage = async (prompt: string): Promise<string | null>
     }
 };
 
-export const generateSceneVideo = async (prompt: string, imageBase64: string): Promise<any> => {
+export const generateSceneVideo = async (prompt: string, imageBase64: string, unleashedMode: boolean): Promise<any> => {
     try {
+        let finalPrompt = `Animate this scene with dramatic acting and movement. A short, cinematic video clip based on the following description: ${prompt}`;
+        if (unleashedMode) {
+            finalPrompt = `${UNLEASHED_IMAGE_PREFIX}${finalPrompt}`;
+        }
         const operation = await ai.models.generateVideos({
             model: 'veo-2.0-generate-001',
-            prompt: `Animate this scene with dramatic acting and movement. A short, cinematic video clip based on the following description: ${prompt}`,
+            prompt: finalPrompt,
             image: {
                 imageBytes: imageBase64,
                 mimeType: 'image/jpeg',

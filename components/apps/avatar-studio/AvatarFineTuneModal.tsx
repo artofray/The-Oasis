@@ -19,6 +19,8 @@ interface AvatarFineTuneModalProps {
   onClose: () => void;
   baseAvatarUrl: string;
   onSave: (finalAvatarUrl: string) => void;
+  // FIX: Add unleashedMode to props.
+  unleashedMode: boolean;
 }
 
 const dataUrlToBlob = async (dataUrl: string) => {
@@ -27,7 +29,7 @@ const dataUrlToBlob = async (dataUrl: string) => {
     return blob;
 };
 
-export const AvatarFineTuneModal: React.FC<AvatarFineTuneModalProps> = ({ isOpen, onClose, baseAvatarUrl, onSave }) => {
+export const AvatarFineTuneModal: React.FC<AvatarFineTuneModalProps> = ({ isOpen, onClose, baseAvatarUrl, onSave, unleashedMode }) => {
     const [currentAvatarUrl, setCurrentAvatarUrl] = useState(baseAvatarUrl);
     const [isLoading, setIsLoading] = useState(false);
     const [lastAppliedPrompt, setLastAppliedPrompt] = useState('');
@@ -45,7 +47,8 @@ export const AvatarFineTuneModal: React.FC<AvatarFineTuneModalProps> = ({ isOpen
         try {
             const blob = await dataUrlToBlob(imageToEdit);
             const base64Image = imageToEdit.split(',')[1];
-            const result = await roundTableService.editAvatar(base64Image, blob.type, prompt);
+            // FIX: Added missing unleashedMode argument.
+            const result = await roundTableService.editAvatar(base64Image, blob.type, prompt, unleashedMode);
             if (result) {
                 setCurrentAvatarUrl(result);
             }
@@ -55,7 +58,7 @@ export const AvatarFineTuneModal: React.FC<AvatarFineTuneModalProps> = ({ isOpen
         } finally {
             setIsLoading(false);
         }
-    }, [lastAppliedPrompt]);
+    }, [lastAppliedPrompt, unleashedMode]);
 
     const debouncedApplyEdit = useCallback(debounce(applyEdit, 1000), [applyEdit]);
 

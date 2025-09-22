@@ -1,5 +1,5 @@
 // FIX: Moved React import to the top of the file.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { MyAiAssistant } from './components/features/MyAiAssistant';
 import { Dashboard } from './components/apps/Dashboard';
@@ -25,6 +25,9 @@ import { persistenceService, OasisState } from './services/persistenceService';
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('round_table');
   const [oasisState, setOasisState] = useState<OasisState | null>(null);
+  const [speakingAgentId, setSpeakingAgentId] = useState<string | null>(null);
+  const oasisStateRef = useRef<OasisState | null>(null);
+  oasisStateRef.current = oasisState;
   
   // Load initial state from the "decentralized network"
   useEffect(() => {
@@ -35,15 +38,28 @@ const App: React.FC = () => {
     loadState();
   }, []);
 
-  // Save state to the "decentralized network" whenever it changes
+  // Add a robust auto-save on exit
   useEffect(() => {
+    const handleBeforeUnload = () => {
+        if (oasisStateRef.current) {
+            console.log("Auto-saving state before unload...");
+            // Use synchronous saving method if available, or the async one
+            // Note: True async operations are not guaranteed in 'beforeunload'
+            persistenceService.saveDataToDecentralizedNetwork(oasisStateRef.current);
+        }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  const handleSaveState = useCallback(async () => {
     if (oasisState) {
-      // Debounce saving to avoid excessive writes on rapid changes
-      const handler = setTimeout(() => {
-        persistenceService.saveDataToDecentralizedNetwork(oasisState);
-      }, 1000);
-      return () => clearTimeout(handler);
+        await persistenceService.saveDataToDecentralizedNetwork(oasisState);
+        return true; // Indicate success
     }
+    return false; // Indicate failure
   }, [oasisState]);
   
   if (!oasisState) {
@@ -61,7 +77,7 @@ const App: React.FC = () => {
     );
   }
 
-  const { agents, penthouseLayout, journalEntries, roundTableMessages } = oasisState;
+  const { agents, penthouseLayout, journalEntries, roundTableMessages, unleashedMode } = oasisState;
 
   const setAgents = (updater: RoundTableAgent[] | ((prev: RoundTableAgent[]) => RoundTableAgent[])) => {
     setOasisState(prev => {
@@ -86,6 +102,10 @@ const App: React.FC = () => {
         return { ...prev, roundTableMessages: newMessages };
     });
   };
+  
+  const setUnleashedMode = (mode: boolean) => {
+    setOasisState(prev => prev ? { ...prev, unleashedMode: mode } : null);
+  };
 
 
   const renderView = () => {
@@ -99,7 +119,7 @@ const App: React.FC = () => {
       case 'settings':
         return <SettingsView />;
       case 'round_table':
-        return <RoundTableView agents={agents} setAgents={setAgents} messages={roundTableMessages} setMessages={setRoundTableMessages} />;
+        return <RoundTableView agents={agents} setAgents={setAgents} messages={roundTableMessages} setMessages={setRoundTableMessages} setSpeakingAgentId={setSpeakingAgentId} unleashedMode={unleashedMode} />;
       case 'tarot_journal':
         return <TarotJournalView entries={journalEntries} setEntries={setJournalEntries} />;
       case 'theatre':
@@ -107,19 +127,20 @@ const App: React.FC = () => {
       case 'sandbox':
         return <SandboxView agents={agents} setAgents={setAgents} />;
       case 'murder_mystery':
-        return <MurderMysteryView agents={agents} />;
+        return <MurderMysteryView agents={agents} unleashedMode={unleashedMode} />;
       case 'poolside':
         return <PoolsideView agents={agents} />;
       case 'penthouse':
         return <PenthouseView agents={agents} layout={penthouseLayout} setLayout={setPenthouseLayout} />;
       case 'activities':
-        return <ActivitiesView agents={agents} setAgents={setAgents} />;
+        return <ActivitiesView agents={agents} setAgents={setAgents} unleashedMode={unleashedMode} />;
       case 'avatar_studio':
-        return <AvatarStudioView agents={agents} setAgents={setAgents} />;
+        return <AvatarStudioView agents={agents} setAgents={setAgents} unleashedMode={unleashedMode} />;
        case 'eternal':
         return <EternalView oasisState={oasisState} setOasisState={setOasisState} />;
        case 'voice_video_chat':
-        return <VoiceVideoChatView agents={agents} />;
+        // FIX: Pass unleashedMode prop to VoiceVideoChatView.
+        return <VoiceVideoChatView agents={agents} unleashedMode={unleashedMode} />;
       case 'dashboard':
       default:
         return <Dashboard />;
@@ -130,12 +151,16 @@ const App: React.FC = () => {
     <div className="flex h-screen w-full bg-gray-900 text-gray-200 font-sans overflow-hidden">
       <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
       <main className="flex-1 flex flex-col h-full">
-        <Header />
+        <Header 
+            unleashedMode={unleashedMode} 
+            setUnleashedMode={setUnleashedMode} 
+            saveState={handleSaveState}
+        />
         <div className="flex-1 p-4 md:p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
           {renderView()}
         </div>
       </main>
-      <MyAiAssistant setCurrentView={setCurrentView} agents={agents} />
+      <MyAiAssistant setCurrentView={setCurrentView} agents={agents} speakingAgentId={speakingAgentId} setSpeakingAgentId={setSpeakingAgentId} />
     </div>
   );
 };

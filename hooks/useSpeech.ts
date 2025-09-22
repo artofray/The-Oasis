@@ -145,7 +145,7 @@ export const useSpeech = () => {
         }
     }, [isListening]);
 
-    const speak = useCallback((text: string, options?: { voice?: SpeechSynthesisVoice; pitch?: number; rate?: number }) => {
+    const speak = useCallback((text: string, options?: { voice?: SpeechSynthesisVoice; pitch?: number; rate?: number; onStart?: () => void; onEnd?: () => void; }) => {
         try {
             if (!('speechSynthesis' in window) || !window.speechSynthesis) {
                 console.warn("Speech Synthesis API is not available.");
@@ -168,17 +168,18 @@ export const useSpeech = () => {
             
             utterance.onstart = () => {
                 if (isMountedRef.current) setIsSpeaking(true);
+                if (options?.onStart) options.onStart();
             };
             utterance.onend = () => {
                 if (isMountedRef.current) setIsSpeaking(false);
+                if (options?.onEnd) options.onEnd();
             };
             utterance.onerror = (e: any) => {
-                // The 'canceled' error is expected when speech is interrupted intentionally.
-                // We don't need to log it as a critical error.
                 if (e.error !== 'canceled') {
                     console.error("Speech synthesis error:", e.error);
                 }
                 if (isMountedRef.current) setIsSpeaking(false);
+                if (options?.onEnd) options.onEnd();
             };
             
             speechSynthesisApi.speak(utterance);

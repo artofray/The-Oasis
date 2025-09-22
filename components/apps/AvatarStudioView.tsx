@@ -9,6 +9,7 @@ import { AvatarFineTuneModal } from './avatar-studio/AvatarFineTuneModal';
 interface AvatarStudioViewProps {
     agents: RoundTableAgent[];
     setAgents: (updater: (prev: RoundTableAgent[]) => RoundTableAgent[]) => void;
+    unleashedMode: boolean;
 }
 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
@@ -23,7 +24,7 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 );
 
 
-export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setAgents }) => {
+export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setAgents, unleashedMode }) => {
     const [selectedAgentId, setSelectedAgentId] = useState<string>(agents.find(a => a.id === 'maggie')?.id || agents[0]?.id || '');
     const selectedAgent = agents.find(a => a.id === selectedAgentId);
     
@@ -87,19 +88,19 @@ export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setA
             let result: string | null = null;
             switch (generationMode) {
                 case 'description':
-                    result = await roundTableService.generateAvatar(prompt);
+                    result = await roundTableService.generateAvatar(prompt, unleashedMode);
                     break;
                 case 'image':
                     if (uploadedImage) {
                         const base64Image = uploadedImage.dataUrl.split(',')[1];
-                        result = await roundTableService.generateAvatarFromImage(base64Image, uploadedImage.file.type, prompt || "Create a new avatar based on this image.");
+                        result = await roundTableService.generateAvatarFromImage(base64Image, uploadedImage.file.type, prompt || "Create a new avatar based on this image.", unleashedMode);
                     }
                     break;
                 case 'lookalike':
-                    result = await roundTableService.generateLookAlikeAvatar(lookAlikePrompt);
+                    result = await roundTableService.generateLookAlikeAvatar(lookAlikePrompt, unleashedMode);
                     break;
                 case 'outfit':
-                    result = await roundTableService.generateOutfit(selectedAgent, outfitPrompt, locationPrompt);
+                    result = await roundTableService.generateOutfit(selectedAgent, outfitPrompt, locationPrompt, unleashedMode);
                     break;
             }
             if (!result) throw new Error("Image generation failed to return an image.");
@@ -216,7 +217,7 @@ export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setA
                                 id="outfit-prompt"
                                 value={outfitPrompt}
                                 onChange={(e) => setOutfitPrompt(e.target.value)}
-                                placeholder="e.g., 'A classy black cocktail dress'"
+                                placeholder="e.g., 'A classy black cocktail dress with silver jewelry'"
                                 className="w-full h-20 p-3 bg-gray-800 text-gray-200 rounded-lg border border-gray-600 focus:ring-2 focus:ring-purple-500"
                             />
                         </div>
@@ -340,6 +341,8 @@ export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setA
                         setNewAvatarUrl(finalAvatarUrl);
                         setIsTuning(false);
                     }}
+                    // FIX: Pass unleashedMode prop to AvatarFineTuneModal.
+                    unleashedMode={unleashedMode}
                 />
             )}
         </div>

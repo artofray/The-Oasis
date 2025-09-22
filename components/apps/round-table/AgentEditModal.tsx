@@ -1,13 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { RoundTableAgent } from '../../../types';
 import { XIcon, UploadIcon } from '../tarot-journal/Icons';
 import * as roundTableService from '../../../services/roundTableService';
 import Spinner from '../tarot-journal/Spinner';
+import { AGENTS as INITIAL_AGENTS, NEW_AGENT_TEMPLATE } from './constants';
 
 interface AgentEditModalProps {
     agent: RoundTableAgent;
     onSave: (agent: RoundTableAgent) => void;
     onClose: () => void;
+    voices: SpeechSynthesisVoice[];
+    // FIX: Add unleashedMode to props.
+    unleashedMode: boolean;
 }
 
 const AVATAR_COLORS = [
@@ -26,16 +30,16 @@ const AvatarPreview: React.FC<{agent: RoundTableAgent}> = ({ agent }) => {
     );
 };
 
-export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, onClose }) => {
+export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, onClose, voices, unleashedMode }) => {
     const [formData, setFormData] = useState<RoundTableAgent>(agent);
     const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
     const [isGeneratingFromPhoto, setIsGeneratingFromPhoto] = useState(false);
     const [photoGenerationStatus, setPhotoGenerationStatus] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
-    const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
     const [isCloning, setIsCloning] = useState(false);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    // FIX: Changed state to store file object along with data URL for image generation from photo.
+    const [imagePreview, setImagePreview] = useState<{ file: File; dataUrl: string; } | null>(null);
     const [lookAlikePrompt, setLookAlikePrompt] = useState('');
     const [isGeneratingLookAlike, setIsGeneratingLookAlike] = useState(false);
     
@@ -45,11 +49,31 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
     const fileInputRef = useRef<HTMLInputElement>(null);
     const photoInputRef = useRef<HTMLInputElement>(null);
 
-    const isCreating = !agent.description;
+    const isCreating = !INITIAL_AGENTS.some(a => a.id === agent.id);
+
+    const defaultState = useMemo(() => {
+        const originalAgent = INITIAL_AGENTS.find(a => a.id === agent.id);
+        if (originalAgent) {
+            return originalAgent;
+        }
+        // For custom agents, the "default" is the template, but with their persisted name.
+        return {
+            ...NEW_AGENT_TEMPLATE,
+            id: agent.id,
+            name: agent.name,
+            category: agent.category || 'Consultant',
+        } as RoundTableAgent;
+    }, [agent]);
+
+    const isModified = useMemo(() => {
+        if (!defaultState) return false;
+        // Simple deep comparison using JSON stringify
+        return JSON.stringify(formData) !== JSON.stringify(defaultState);
+    }, [formData, defaultState]);
+
 
     useEffect(() => {
         setFormData(agent);
-        setRecordedAudioUrl(agent.voiceSampleUrl || null);
     }, [agent]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -63,7 +87,8 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
 
     const handleGenerateAvatar = async () => {
         setIsGeneratingAvatar(true);
-        const imageUrl = await roundTableService.generateAvatar(formData.description);
+        // FIX: Added missing unleashedMode argument.
+        const imageUrl = await roundTableService.generateAvatar(formData.description, unleashedMode);
         if (imageUrl) {
             setFormData(prev => ({...prev, avatarUrl: imageUrl}));
         }
@@ -73,7 +98,8 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
     const handleGenerateLookAlike = async () => {
         if (!lookAlikePrompt) return;
         setIsGeneratingLookAlike(true);
-        const imageUrl = await roundTableService.generateLookAlikeAvatar(lookAlikePrompt);
+        // FIX: Added missing unleashedMode argument.
+        const imageUrl = await roundTableService.generateLookAlikeAvatar(lookAlikePrompt, unleashedMode);
         if (imageUrl) {
             setFormData(prev => ({...prev, avatarUrl: imageUrl}));
         }
@@ -85,13 +111,16 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setImagePreview(reader.result as string);
+                // FIX: Store the file object along with the data URL.
+                setImagePreview({ file, dataUrl: reader.result as string });
             };
             reader.readAsDataURL(file);
         }
     };
     
     const handleGenerateFromPhoto = async () => {
+        // FIX: Guard clause to ensure an image is uploaded.
+        if (!imagePreview) return;
         setIsGeneratingFromPhoto(true);
         const statuses = [
             "Analyzing photo...",
@@ -104,8 +133,11 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
             setPhotoGenerationStatus(status);
             await new Promise(res => setTimeout(res, 1500));
         }
+        
+        // FIX: Corrected function call to use generateAvatarFromImage with the uploaded photo data.
+        const base64Image = imagePreview.dataUrl.split(',')[1];
+        const imageUrl = await roundTableService.generateAvatarFromImage(base64Image, imagePreview.file.type, formData.description, unleashedMode);
 
-        const imageUrl = await roundTableService.generateAvatar(formData.description);
         if (imageUrl) {
             setFormData(prev => ({...prev, avatarUrl: imageUrl}));
         }
@@ -114,6 +146,17 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
         setImagePreview(null);
     };
 
+    const handlePresetVoiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const presetName = e.target.value;
+        setFormData(prev => ({
+            ...prev,
+            voice: {
+                isCloned: false,
+                sampleUrl: undefined,
+                presetName: presetName ? presetName : undefined
+            }
+        }));
+    };
 
     const handleStartRecording = async () => {
         try {
@@ -128,8 +171,10 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
             mediaRecorderRef.current.onstop = () => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-                setRecordedAudioUrl(audioUrl);
-                setFormData(prev => ({...prev, voiceSampleUrl: audioUrl}));
+                setFormData(prev => ({
+                    ...prev,
+                    voice: { isCloned: false, sampleUrl: audioUrl, presetName: undefined }
+                }));
                 stream.getTracks().forEach(track => track.stop());
             };
 
@@ -164,31 +209,44 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
         const file = e.target.files?.[0];
         if (file) {
             const url = URL.createObjectURL(file);
-            setRecordedAudioUrl(url);
-            setFormData(prev => ({...prev, voiceSampleUrl: url}));
+            setFormData(prev => ({
+                ...prev,
+                voice: { isCloned: false, sampleUrl: url, presetName: undefined }
+            }));
         }
     }
     
     const handleCloneVoice = () => {
         setIsCloning(true);
         setTimeout(() => {
-            setFormData(prev => ({ ...prev, voiceCloned: true }));
+            setFormData(prev => ({ ...prev, voice: { ...prev.voice, isCloned: true } }));
             setIsCloning(false);
         }, 2000); // Simulate cloning process
     }
     
     const handleRemoveVoice = () => {
-        setFormData(prev => ({ ...prev, voiceCloned: false, voiceSampleUrl: undefined }));
-        setRecordedAudioUrl(null);
+        setFormData(prev => ({
+            ...prev,
+            voice: { isCloned: false, sampleUrl: undefined, presetName: undefined }
+        }));
     }
+    
+    const handleReset = () => {
+        if (defaultState) {
+            setFormData(defaultState);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave(formData);
     };
+    
+    const isLoading = isGeneratingAvatar || isGeneratingFromPhoto || isCloning || isGeneratingLookAlike;
+    const englishVoices = useMemo(() => voices.filter(v => v.lang.startsWith('en-')), [voices]);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 backdrop-blur-sm">
             <div className="bg-[#171a21] rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 m-4 relative border border-gray-700 transform transition-all animate-scaleIn" onClick={e => e.stopPropagation()}>
                 <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
                     <XIcon className="h-6 w-6" />
@@ -235,7 +293,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2">
-                                        {imagePreview && <img src={imagePreview} alt="upload preview" className="w-12 h-12 object-cover rounded-md" />}
+                                        {imagePreview && <img src={imagePreview.dataUrl} alt="upload preview" className="w-12 h-12 object-cover rounded-md" />}
                                         <button type="button" onClick={() => photoInputRef.current?.click()} className="flex-1 flex justify-center items-center gap-2 px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors">
                                            <UploadIcon className="w-5 h-5"/> {imagePreview ? "Change Photo" : "Upload Photo"}
                                         </button>
@@ -268,45 +326,72 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
 
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">Voice Persona</label>
-                        {formData.voiceCloned ? (
-                            <div className="flex items-center justify-between bg-green-900/50 p-3 rounded-lg">
-                                <p className="text-green-300 font-semibold text-sm">Custom voice is active.</p>
-                                <button type="button" onClick={handleRemoveVoice} className="text-xs bg-red-600/50 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md transition-colors">
-                                    Remove
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="space-y-3 p-3 bg-black/20 rounded-lg">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
-                                        Upload Sample
-                                    </button>
-                                    <input type="file" ref={fileInputRef} onChange={handleAudioFileChange} accept="audio/wav, audio/mpeg" className="hidden" />
-                                    
-                                    <button type="button" onClick={isRecording ? handleStopRecording : handleStartRecording} className={`text-sm w-full font-bold py-2 px-4 rounded-md transition-colors ${isRecording ? 'bg-red-600' : 'bg-gray-600 hover:bg-gray-700'}`}>
-                                        {isRecording ? `Recording... (${10-recordingSeconds}s)` : 'Record Sample'}
+                        <div className="p-3 bg-black/20 rounded-lg space-y-3">
+                            {formData.voice.isCloned ? (
+                                <div className="flex items-center justify-between bg-green-900/50 p-3 rounded-lg">
+                                    <p className="text-green-300 font-semibold text-sm">Custom voice is active.</p>
+                                    <button type="button" onClick={handleRemoveVoice} className="text-xs bg-red-600/50 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md transition-colors">
+                                        Remove
                                     </button>
                                 </div>
-                                {recordedAudioUrl && (
-                                    <div className="space-y-3 pt-3 border-t border-gray-700">
-                                        <audio controls src={recordedAudioUrl} className="w-full h-10" />
-                                        <button type="button" onClick={handleCloneVoice} disabled={isCloning} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-700 transition-colors disabled:bg-gray-500">
-                                            {isCloning && <Spinner />}
-                                            {isCloning ? 'Cloning Voice...' : 'Clone Voice from Sample'}
+                            ) : (
+                                <>
+                                    <div>
+                                        <label htmlFor="preset-voice" className="block text-xs font-medium text-gray-400 mb-1">Preset Voice</label>
+                                        <select
+                                            id="preset-voice"
+                                            value={formData.voice.presetName || ''}
+                                            onChange={handlePresetVoiceChange}
+                                            className="w-full bg-[#2a2f3b] border border-gray-600 rounded-md p-2 text-white text-sm"
+                                        >
+                                            <option value="">Automatic</option>
+                                            {englishVoices.map(voice => (
+                                                <option key={voice.name} value={voice.name}>{voice.name} ({voice.lang})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <p className="text-center text-xs text-gray-400">OR CREATE A CUSTOM VOICE</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">
+                                            Upload Sample
+                                        </button>
+                                        <input type="file" ref={fileInputRef} onChange={handleAudioFileChange} accept="audio/wav, audio/mpeg" className="hidden" />
+                                        
+                                        <button type="button" onClick={isRecording ? handleStopRecording : handleStartRecording} className={`text-sm w-full font-bold py-2 px-4 rounded-md transition-colors ${isRecording ? 'bg-red-600' : 'bg-gray-600 hover:bg-gray-700'}`}>
+                                            {isRecording ? `Recording... (${10-recordingSeconds}s)` : 'Record Sample'}
                                         </button>
                                     </div>
-                                )}
-                            </div>
-                        )}
+                                    {formData.voice.sampleUrl && (
+                                        <div className="space-y-3 pt-3 border-t border-gray-700">
+                                            <audio controls src={formData.voice.sampleUrl} className="w-full h-10" />
+                                            <button type="button" onClick={handleCloneVoice} disabled={isCloning} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-700 transition-colors disabled:bg-gray-500">
+                                                {isCloning && <Spinner />}
+                                                {isCloning ? 'Cloning Voice...' : 'Clone Voice from Sample'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="pt-4 flex justify-end">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors mr-2">
-                            Cancel
+                    <div className="pt-4 flex justify-between items-center">
+                         <button
+                            type="button"
+                            onClick={handleReset}
+                            disabled={!isModified || isLoading}
+                            className="px-4 py-2 bg-amber-800 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Reset Agent
                         </button>
-                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-                            Save Changes
-                        </button>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors">
+                                Cancel
+                            </button>
+                            <button type="submit" disabled={isLoading} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed">
+                                Save Changes
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

@@ -9,9 +9,10 @@ interface CuddlePuddleModalProps {
   onClose: () => void;
   agents: RoundTableAgent[];
   onUpdateMaggieActivity: (activity: string) => void;
+  unleashedMode: boolean;
 }
 
-export const CuddlePuddleModal: React.FC<CuddlePuddleModalProps> = ({ isOpen, onClose, agents, onUpdateMaggieActivity }) => {
+export const CuddlePuddleModal: React.FC<CuddlePuddleModalProps> = ({ isOpen, onClose, agents, onUpdateMaggieActivity, unleashedMode }) => {
     const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
     const [scenePrompt, setScenePrompt] = useState('');
     const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export const CuddlePuddleModal: React.FC<CuddlePuddleModalProps> = ({ isOpen, on
         setGeneratedImageUrl(null);
         try {
             const selectedAgents = agents.filter(a => selectedAgentIds.has(a.id));
-            const result = await roundTableService.generateCuddlePuddleImage(selectedAgents, scenePrompt);
+            const result = await roundTableService.generateCuddlePuddleImage(selectedAgents, scenePrompt, unleashedMode);
             if (!result) throw new Error("Image generation failed.");
             setGeneratedImageUrl(result);
         } catch(e) {

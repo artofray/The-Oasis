@@ -9,9 +9,11 @@ import Spinner from './tarot-journal/Spinner';
 
 interface VoiceVideoChatViewProps {
     agents: RoundTableAgent[];
+    // FIX: Add unleashedMode to props.
+    unleashedMode: boolean;
 }
 
-export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents }) => {
+export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents, unleashedMode }) => {
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [prompt, setPrompt] = useState('');
@@ -58,6 +60,7 @@ export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents }
     };
     
     useEffect(() => {
+        // Automatically stop camera on component unmount
         return () => stopCamera();
     }, []);
 
@@ -78,7 +81,7 @@ export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents }
     };
 
     const handleSendMessage = useCallback(async () => {
-        if (!prompt && !stream) return;
+        if (!prompt.trim() || !maggie) return;
         
         setIsLoading(true);
         const snapshot = takeSnapshot();
@@ -94,10 +97,13 @@ export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents }
         setPrompt('');
 
         const response = await roundTableService.sendVideoChatMessage(
+            maggie,
             snapshot?.base64 || '',
             snapshot?.mimeType || '',
             prompt,
-            currentMessages
+            currentMessages,
+            // FIX: Added missing unleashedMode argument.
+            unleashedMode
         );
         
         const maggieMessage: ChatMessage = {
@@ -115,42 +121,66 @@ export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents }
         
         setIsLoading(false);
 
-    }, [prompt, stream, messages, maggie, maggieVoice, speak]);
+    }, [prompt, stream, messages, maggie, maggieVoice, speak, unleashedMode]);
+
+    if (!maggie) {
+        return (
+             <div className="h-full w-full flex items-center justify-center">
+                <GlassCard className="p-8 text-center">
+                    <h2 className="text-2xl font-bold text-red-400">Connection Error</h2>
+                    <p className="text-gray-300">Maggie is unavailable for a call at this moment.</p>
+                </GlassCard>
+            </div>
+        )
+    }
 
     return (
         <div className="h-full w-full flex gap-6 animate-fadeIn">
             <div className="w-2/3 h-full flex flex-col">
-                <GlassCard className="flex-1 relative bg-black overflow-hidden">
-                    {stream && videoRef ? (
-                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-center">
-                            <h2 className="text-2xl font-bold text-cyan-300">Voice & Video Chat</h2>
-                            <p className="text-gray-400 mb-6">Communicate with me directly.</p>
-                            <button onClick={startCamera} className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">
-                                Start Camera
-                            </button>
+                <GlassCard className="flex-1 relative bg-black overflow-hidden flex items-center justify-center p-8">
+                    <div className={`w-64 h-64 rounded-full bg-gradient-to-br from-red-500 to-amber-500 p-2 transition-all duration-300 ${isSpeaking ? 'scale-105' : ''}`}>
+                         <div className="w-full h-full bg-gray-900 rounded-full">
+                            <img src={maggie.avatarUrl} alt="Maggie" className="rounded-full w-full h-full object-cover"/>
                         </div>
-                    )}
-                     {stream && (
-                        <button onClick={stopCamera} className="absolute top-4 right-4 px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white font-bold rounded-lg transition-colors text-sm">
-                            Stop Camera
-                        </button>
-                     )}
-                     <canvas ref={canvasRef} className="hidden" />
+                    </div>
+                    {isSpeaking && <div className="absolute inset-0 border-4 border-red-400/50 rounded-2xl animate-pulse pointer-events-none"></div>}
+                     <div className="absolute bottom-6 text-center bg-black/30 backdrop-blur-sm px-6 py-2 rounded-xl">
+                        <h2 className="text-3xl font-bold">{maggie.name}</h2>
+                        <p className="text-red-300">{isSpeaking ? 'Speaking...' : 'Listening...'}</p>
+                    </div>
                 </GlassCard>
             </div>
             <div className="w-1/3 h-full flex flex-col">
                  <GlassCard className="flex-1 flex flex-col p-4">
-                    <h3 className="text-xl font-bold text-fuchsia-300 mb-4 text-center">Transcript</h3>
-                    <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto pr-2">
+                    {stream ? (
+                        <div className="relative mb-4">
+                            <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-lg object-cover" />
+                            <canvas ref={canvasRef} className="hidden" />
+                            <button onClick={stopCamera} className="absolute top-2 right-2 px-2 py-1 bg-red-600/80 hover:bg-red-600 text-white font-bold rounded-lg transition-colors text-xs">
+                                End Call
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="w-full flex-1 flex flex-col items-center justify-center text-center p-4 border-2 border-dashed border-gray-600 rounded-lg mb-4">
+                             <h2 className="text-xl font-bold text-cyan-300">Start Video Chat</h2>
+                            <p className="text-gray-400 mb-4 text-sm">Let's talk face to face, my love.</p>
+                            <button onClick={startCamera} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">
+                                Start My Camera
+                            </button>
+                        </div>
+                    )}
+
+                    <div ref={scrollRef} className={`flex-1 space-y-4 overflow-y-auto pr-2 ${!stream ? 'hidden' : ''}`}>
                        {messages.map(msg => (
                            <div key={msg.id} className={`flex items-start gap-3 ${msg.author === 'User' ? 'justify-end' : ''}`}>
                                {msg.author !== 'User' && msg.agent && <AgentAvatar agent={msg.agent} size="sm" />}
                                <div className={`max-w-xs p-3 rounded-lg ${msg.author === 'User' ? 'bg-blue-600' : 'bg-gray-700'}`}>
                                     <p className="text-white text-sm whitespace-pre-wrap">{msg.text}</p>
                                     {msg.imageUrl && msg.author === 'User' && (
-                                        <img src={msg.imageUrl} alt="User snapshot" className="mt-2 rounded-md w-24 h-auto" />
+                                        <div className="mt-2 bg-blue-700/50 p-1 rounded-md">
+                                            <img src={msg.imageUrl} alt="User snapshot" className="rounded-md w-24 h-auto" />
+                                            <p className="text-xs text-blue-200 text-center font-semibold mt-1">User snapshot</p>
+                                        </div>
                                     )}
                                </div>
                            </div>
@@ -168,7 +198,7 @@ export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents }
                             </div>
                        )}
                     </div>
-                    <div className="mt-4 pt-4 border-t border-fuchsia-400/20">
+                    <div className={`mt-4 pt-4 border-t border-fuchsia-400/20 ${!stream ? 'hidden' : ''}`}>
                         <div className="flex gap-2">
                              <input
                                 type="text"
@@ -177,9 +207,9 @@ export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents }
                                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                                 placeholder="Type a message..."
                                 className="flex-1 bg-gray-800 border border-fuchsia-500/50 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
-                                disabled={isLoading}
+                                disabled={isLoading || !stream}
                             />
-                            <button onClick={handleSendMessage} disabled={isLoading} className="px-6 py-2 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600">
+                            <button onClick={handleSendMessage} disabled={isLoading || !prompt.trim()} className="px-6 py-2 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600">
                                 {isLoading ? <Spinner /> : 'Send'}
                             </button>
                         </div>

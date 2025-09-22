@@ -10,9 +10,10 @@ interface BedtimeStoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   agents: RoundTableAgent[];
+  unleashedMode: boolean;
 }
 
-export const BedtimeStoryModal: React.FC<BedtimeStoryModalProps> = ({ isOpen, onClose, agents }) => {
+export const BedtimeStoryModal: React.FC<BedtimeStoryModalProps> = ({ isOpen, onClose, agents, unleashedMode }) => {
     const [selectedAgent, setSelectedAgent] = useState<RoundTableAgent | null>(null);
     const [prompt, setPrompt] = useState('');
     const [story, setStory] = useState<BedtimeStory | null>(null);
@@ -50,7 +51,7 @@ export const BedtimeStoryModal: React.FC<BedtimeStoryModalProps> = ({ isOpen, on
         setStory(null);
         stop();
         try {
-            const result = await storytellerService.generateBedtimeStory(selectedAgent, prompt);
+            const result = await storytellerService.generateBedtimeStory(selectedAgent, prompt, unleashedMode);
             setStory(result);
         } catch (e) {
             setError(e instanceof Error ? e.message : "An unknown error occurred.");

@@ -64,7 +64,7 @@ const CharacterCard: React.FC<{ character: MurderMysteryCharacter; agent: RoundT
 };
 
 
-const PlotDisplay: React.FC<{ plot: MurderMysteryPlot; onGenerate: () => void; agents: RoundTableAgent[]; speak: Function; voices: SpeechSynthesisVoice[] }> = ({ plot, onGenerate, agents, speak, voices }) => {
+const PlotDisplay: React.FC<{ plot: MurderMysteryPlot; onGenerate: () => void; agents: RoundTableAgent[]; speak: Function; voices: SpeechSynthesisVoice[]; unleashedMode: boolean }> = ({ plot, onGenerate, agents, speak, voices, unleashedMode }) => {
     const [sceneImageUrl, setSceneImageUrl] = useState<string | null>(null);
     const [isGeneratingImage, setIsGeneratingImage] = useState(false);
     const [imageError, setImageError] = useState<string | null>(null);
@@ -162,7 +162,7 @@ const PlotDisplay: React.FC<{ plot: MurderMysteryPlot; onGenerate: () => void; a
         setIsGeneratingImage(true);
         setImageError(null);
         try {
-            const imageUrl = await gameService.generateSceneImage(plot.openingScene);
+            const imageUrl = await gameService.generateSceneImage(plot.openingScene, unleashedMode);
             if(imageUrl) {
                 setSceneImageUrl(imageUrl);
             } else {
@@ -182,7 +182,7 @@ const PlotDisplay: React.FC<{ plot: MurderMysteryPlot; onGenerate: () => void; a
         setVideoStatusMessage("Initializing video generation...");
         try {
             const base64Image = sceneImageUrl.split(',')[1];
-            const operation = await gameService.generateSceneVideo(plot.openingScene, base64Image);
+            const operation = await gameService.generateSceneVideo(plot.openingScene, base64Image, unleashedMode);
             setVideoGenerationOperation(operation);
         } catch (e) {
             setVideoError(e instanceof Error ? e.message : "An unknown error occurred.");
@@ -289,9 +289,10 @@ const PlotDisplay: React.FC<{ plot: MurderMysteryPlot; onGenerate: () => void; a
 
 interface MurderMysteryViewProps {
     agents: RoundTableAgent[];
+    unleashedMode: boolean;
 }
 
-export const MurderMysteryView: React.FC<MurderMysteryViewProps> = ({ agents }) => {
+export const MurderMysteryView: React.FC<MurderMysteryViewProps> = ({ agents, unleashedMode }) => {
   const [plot, setPlot] = useState<MurderMysteryPlot | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -302,14 +303,14 @@ export const MurderMysteryView: React.FC<MurderMysteryViewProps> = ({ agents }) 
     setError(null);
     setPlot(null);
     try {
-      const generatedPlot = await gameService.generateMurderMysteryPlot(agents);
+      const generatedPlot = await gameService.generateMurderMysteryPlot(agents, unleashedMode);
       setPlot(generatedPlot);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'An unknown error occurred.');
     } finally {
       setIsLoading(false);
     }
-  }, [agents]);
+  }, [agents, unleashedMode]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -324,7 +325,7 @@ export const MurderMysteryView: React.FC<MurderMysteryViewProps> = ({ agents }) 
         );
     }
     if (plot) {
-        return <PlotDisplay plot={plot} onGenerate={handleGenerateMystery} agents={agents} speak={speak} voices={voices} />;
+        return <PlotDisplay plot={plot} onGenerate={handleGenerateMystery} agents={agents} speak={speak} voices={voices} unleashedMode={unleashedMode} />;
     }
     return <InitialState onGenerate={handleGenerateMystery} />;
   }

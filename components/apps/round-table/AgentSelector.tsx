@@ -32,7 +32,7 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({ agents, selectedAg
             <div className="flex-1 overflow-y-auto pr-2 -mr-2">
                 <ul className="space-y-1">
                     {agents.map(agent => (
-                        <li key={agent.id} className="group">
+                        <li key={agent.id}>
                             <label className={`flex items-center p-3 rounded-lg cursor-pointer transition-all ${selectedAgentIds.has(agent.id) ? 'bg-blue-900/50' : 'hover:bg-gray-800/60'}`}>
                                 <input
                                     type="checkbox"
@@ -46,12 +46,16 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({ agents, selectedAg
                                     <div className="ml-3 overflow-hidden">
                                         <div className="flex items-center gap-2">
                                             <p className="font-semibold truncate text-gray-100">{agent.name}</p>
-                                            {agent.voiceCloned && <VoiceClonedIcon className="w-4 h-4 flex-shrink-0" />}
+                                            {agent.voice.isCloned && <VoiceClonedIcon className="w-4 h-4 flex-shrink-0" />}
                                         </div>
                                         <p className="text-xs text-gray-400 truncate">{agent.description}</p>
                                     </div>
                                 </div>
-                                <button onClick={(e) => { e.preventDefault(); onEditAgent(agent.id); }} className="ml-2 p-1 rounded-full text-gray-400 hover:bg-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" aria-label={`Edit ${agent.name}`}>
+                                <button 
+                                    onClick={(e) => { e.preventDefault(); onEditAgent(agent.id); }} 
+                                    className="ml-2 p-1 rounded-full text-gray-300 hover:bg-gray-600 hover:text-white transition-colors" 
+                                    aria-label={`Edit ${agent.name}`}
+                                >
                                     <EditIcon className="w-4 h-4" />
                                 </button>
                             </label>

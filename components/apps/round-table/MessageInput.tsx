@@ -5,6 +5,7 @@ import { SpeakerOnIcon, SpeakerOffIcon, FileIcon } from './Icons';
 interface MessageInputProps {
     onSendMessage: (prompt: string, file?: File) => void;
     onSendMedia: (type: 'image' | 'video' | 'audio', prompt: string) => void;
+    onInterrupt: () => void;
     isLoading: boolean;
     webAccess: boolean;
     onWebAccessToggle: () => void;
@@ -13,7 +14,7 @@ interface MessageInputProps {
     disabled: boolean;
 }
 
-export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, onSendMedia, isLoading, webAccess, onWebAccessToggle, isAudioEnabled, onAudioToggle, disabled }) => {
+export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, onSendMedia, onInterrupt, isLoading, webAccess, onWebAccessToggle, isAudioEnabled, onAudioToggle, disabled }) => {
     const [prompt, setPrompt] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const { isListening, transcript, startListening, stopListening } = useSpeech();
@@ -25,7 +26,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, onSen
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (prompt.trim() || file) {
+        if (isLoading) {
+            onInterrupt();
+        } else if (prompt.trim() || file) {
             onSendMessage(prompt.trim(), file ?? undefined);
             setPrompt('');
             setFile(null);
@@ -56,6 +59,19 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, onSen
             handleSubmit(e);
         }
     };
+
+    const SendButton = () => (
+        <button type="submit" className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 ml-2 disabled:bg-gray-600" disabled={(!prompt.trim() && !file) || disabled}>
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+        </button>
+    );
+
+    const InterruptButton = () => (
+        <button type="button" onClick={onInterrupt} className="ml-2 px-4 py-2 flex items-center gap-2 rounded-full bg-red-600 hover:bg-red-700 text-sm font-semibold transition-colors">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1zm4 0a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+            Interrupt
+        </button>
+    );
 
     return (
         <div className="p-4 bg-[#171a21] border-t border-gray-700">
@@ -113,13 +129,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, onSen
                         <button type="button" onClick={isListening ? stopListening : startListening} className={`p-2 rounded-full hover:bg-gray-600 ${isListening ? 'text-red-500 animate-pulse' : ''}`} disabled={isLoading || disabled}>
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"></path></svg>
                         </button>
-                        <button type="submit" className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 ml-2 disabled:bg-gray-600" disabled={isLoading || (!prompt.trim() && !file) || disabled}>
-                            {isLoading ? (
-                                <svg className="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
-                            )}
-                        </button>
+                        {isLoading ? <InterruptButton /> : <SendButton />}
                     </div>
                 </form>
             </div>

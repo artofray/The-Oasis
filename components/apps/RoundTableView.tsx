@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { AgentSelector } from './round-table/AgentSelector';
 import { ChatWindow } from './round-table/ChatWindow';
 import { MessageInput } from './round-table/MessageInput';
@@ -6,24 +6,19 @@ import { AgentEditModal } from './round-table/AgentEditModal';
 import * as roundTableService from '../../services/roundTableService';
 import type { ChatMessage, ChatMode, RoundTableAgent } from '../../types';
 import { useSpeech } from '../../hooks/useSpeech';
+import { NEW_AGENT_TEMPLATE } from './round-table/constants';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 
-const NEW_AGENT_TEMPLATE: Omit<RoundTableAgent, 'id'> = {
-    name: 'New Agent',
-    description: 'A newly created AI with a fresh perspective.',
-    avatarColor: 'bg-gray-500',
-    colorHex: '#6B7280',
-    currentActivity: 'Awaiting instructions.',
-    systemInstruction: 'You are a helpful AI assistant.',
-    voiceCloned: false,
-};
 interface RoundTableViewProps {
     agents: RoundTableAgent[];
     setAgents: (agents: RoundTableAgent[] | ((prev: RoundTableAgent[]) => RoundTableAgent[])) => void;
     messages: ChatMessage[];
     setMessages: (messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
+    setSpeakingAgentId: (id: string | null) => void;
+    unleashedMode: boolean;
 }
 
-export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgents, messages, setMessages }) => {
+export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgents, messages, setMessages, setSpeakingAgentId, unleashedMode }) => {
     const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
     const [mode, setMode] = useState<ChatMode>('round_table');
     const [isLoading, setIsLoading] = useState(false);
@@ -31,23 +26,49 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
     const [isAudioEnabled, setIsAudioEnabled] = useState(false);
     const [modalState, setModalState] = useState<{ isOpen: boolean; agent: RoundTableAgent | null }>({ isOpen: false, agent: null });
     const [agentVoiceMap, setAgentVoiceMap] = useState<Record<string, SpeechSynthesisVoice | undefined>>({});
+    const isInterrupted = useRef(false);
 
-    const { speak, voices } = useSpeech();
+    const { speak, stop, voices } = useSpeech();
 
     useEffect(() => {
         if (voices.length > 0 && agents.length > 0) {
             const newMap: Record<string, SpeechSynthesisVoice | undefined> = {};
-            const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+            const englishVoices = voices.filter(voice => voice.lang.startsWith('en-'));
             const usableVoices = englishVoices.length > 0 ? englishVoices : voices;
             
             agents.forEach((agent, index) => {
-                newMap[agent.id] = usableVoices[index % usableVoices.length];
+                let foundVoice: SpeechSynthesisVoice | undefined;
+                // 1. Try to find by preset name
+                if (agent.voice.presetName) {
+                    foundVoice = usableVoices.find(v => v.name === agent.voice.presetName);
+                }
+                // 2. If no preset or not found, fall back to hash
+                if (!foundVoice) {
+                    foundVoice = usableVoices[index % usableVoices.length];
+                }
+                newMap[agent.id] = foundVoice;
             });
             setAgentVoiceMap(newMap);
         }
     }, [voices, agents]);
 
     useEffect(() => {
+        // On component mount or when messages change, check for any interrupted video generations from a previous session.
+        if (messages.some(m => m.videoGenerationStatus === 'interrupted')) {
+            setMessages(prev => prev.map(m => {
+                if (m.videoGenerationStatus === 'interrupted') {
+                    const { videoGenerationStatus, ...rest } = m;
+                    return {
+                        ...rest,
+                        text: `Video generation for "${m.originalPrompt}" was interrupted by a page reload. Please try again.`,
+                    };
+                }
+                return m;
+            }));
+            // Return early to avoid starting polling logic on outdated message data in this render cycle
+            return;
+        }
+
         const intervals: Record<string, number> = {};
         
         const reassuringMessages = [
@@ -140,8 +161,16 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
         setModalState({ isOpen: false, agent: null });
     }
 
+    const handleInterrupt = () => {
+        isInterrupted.current = true;
+        stop();
+        setSpeakingAgentId(null);
+    };
+
     const handleSendMessage = useCallback(async (prompt: string, file?: File) => {
         if (isLoading || (!prompt && !file) || selectedAgentIds.size === 0) return;
+        
+        isInterrupted.current = false;
         setIsLoading(true);
     
         const processAndSend = async (fileContent?: string) => {
@@ -154,18 +183,16 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                 fileContent: fileContent,
             };
     
-            // This will be the history for API calls, and we'll add to it as agents respond.
             const conversationHistoryForApi = [...messages, userMessage];
-            
-            // Add user message to UI state.
             setMessages(prevMessages => [...prevMessages, userMessage]);
             
             const selectedAgents = agents.filter(agent => selectedAgentIds.has(agent.id));
     
             for (const agent of selectedAgents) {
+                if (isInterrupted.current) break;
+                
                 const agentLoadingMessageId = `loading-${agent.id}-${Date.now()}`;
                 
-                // Add loading message to UI.
                 setMessages(prevMessages => [...prevMessages, {
                     id: agentLoadingMessageId,
                     author: agent.name,
@@ -175,21 +202,26 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
     
                 const response = await roundTableService.generateAgentResponse(
                     agent,
-                    conversationHistoryForApi, // Pass the up-to-date history
-                    webAccess
+                    conversationHistoryForApi,
+                    webAccess,
+                    unleashedMode
                 );
+
+                if (isInterrupted.current) break;
                 
                 if (isAudioEnabled) {
                     const agentVoice = agentVoiceMap[agent.id];
-                    const speechOptions: { voice?: SpeechSynthesisVoice; pitch?: number; rate?: number } = { voice: agentVoice };
-                    
-                    if (agent.voiceCloned) {
-                        const hash = agent.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                        speechOptions.pitch = 1 + (hash % 5) / 10 - 0.2; // Range 0.8 to 1.2
-                        speechOptions.rate = 1 + (hash % 3) / 10 - 0.1;  // Range 0.9 to 1.1
-                    }
-    
-                    speak(response.text, speechOptions);
+                    const hash = agent.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                    const pitch = 1 + (hash % 5) / 20 - 0.1; // ~0.9 to 1.1
+                    const rate = 1 + (hash % 4) / 20 - 0.05;  // ~0.95 to 1.1
+
+                    speak(response.text, {
+                        voice: agentVoice,
+                        pitch,
+                        rate,
+                        onStart: () => setSpeakingAgentId(agent.id),
+                        onEnd: () => setSpeakingAgentId(null),
+                    });
                 }
                 
                 const agentResponseMessage: ChatMessage = {
@@ -200,13 +232,15 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                     agent: agent,
                 };
     
-                // Add the real response to our API history for the next agent in the loop.
                 conversationHistoryForApi.push(agentResponseMessage);
                 
-                // Update UI by replacing the loading message with the real one.
                 setMessages(prevMessages => prevMessages.map(msg => 
                     msg.id === agentLoadingMessageId ? agentResponseMessage : msg
                 ));
+            }
+
+            if (isInterrupted.current) {
+                setMessages(prev => [...prev, { id: `sys-${Date.now()}`, author: 'System', text: 'Conversation interrupted.' }]);
             }
             setIsLoading(false);
         };
@@ -225,7 +259,7 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
             processAndSend();
         }
     
-    }, [isLoading, selectedAgentIds, messages, webAccess, agents, isAudioEnabled, speak, agentVoiceMap, setMessages]);
+    }, [isLoading, selectedAgentIds, messages, webAccess, agents, isAudioEnabled, speak, agentVoiceMap, setMessages, setSpeakingAgentId, stop, unleashedMode]);
 
 
     const handleSendMedia = async (type: 'image' | 'video' | 'audio', prompt: string) => {
@@ -235,7 +269,7 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
 
         switch (type) {
             case 'image':
-                mediaMessage = await roundTableService.generateImageResponse(prompt);
+                mediaMessage = await roundTableService.generateImageResponse(prompt, unleashedMode);
                 break;
             case 'video':
                 mediaMessage = await roundTableService.generateVideoResponse(prompt);
@@ -259,10 +293,13 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                 onCreateAgent={handleCreateAgent}
             />
             <div className="flex flex-col flex-1">
-                <ChatWindow messages={messages} />
+                <ErrorBoundary>
+                    <ChatWindow messages={messages} />
+                </ErrorBoundary>
                 <MessageInput
                     onSendMessage={handleSendMessage}
                     onSendMedia={handleSendMedia}
+                    onInterrupt={handleInterrupt}
                     isLoading={isLoading}
                     webAccess={webAccess}
                     onWebAccessToggle={() => setWebAccess(!webAccess)}
@@ -276,6 +313,9 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                     agent={modalState.agent}
                     onSave={handleSaveAgent}
                     onClose={() => setModalState({ isOpen: false, agent: null })}
+                    voices={voices}
+                    // FIX: Pass unleashedMode prop to AgentEditModal.
+                    unleashedMode={unleashedMode}
                 />
             )}
         </div>

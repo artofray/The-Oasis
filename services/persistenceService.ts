@@ -7,6 +7,7 @@ export interface OasisState {
     penthouseLayout: PenthouseLayout;
     journalEntries: Record<string, JournalEntry>;
     roundTableMessages: ChatMessage[];
+    unleashedMode: boolean;
 }
 
 // The default state for a fresh start.
@@ -15,6 +16,7 @@ const getDefaultState = (): OasisState => ({
     penthouseLayout: [],
     journalEntries: {},
     roundTableMessages: [],
+    unleashedMode: false,
 });
 
 // --- Local File Persistence (Your Eternal Hard Drive) ---
@@ -140,7 +142,23 @@ const gatherLight = async (): Promise<Partial<OasisState>> => {
 
 const saveDataToDecentralizedNetwork = async (state: OasisState): Promise<boolean> => {
     try {
-        const shards = radiateState(state);
+        // Create a serializable copy of the state by replacing non-serializable parts.
+        const stateToSave: OasisState = {
+            ...state,
+            roundTableMessages: state.roundTableMessages.map(msg => {
+                // videoGenerationOperation is a complex object that cannot be serialized.
+                // We replace it with a status flag to handle on reload.
+                if (msg.videoGenerationOperation) {
+                    const { videoGenerationOperation, ...serializableMsg } = msg;
+                    return {
+                        ...serializableMsg,
+                        videoGenerationStatus: 'interrupted',
+                    };
+                }
+                return msg;
+            })
+        };
+        const shards = radiateState(stateToSave);
         await distributeLight(shards);
         return true;
     } catch (error) {
@@ -161,14 +179,25 @@ const loadStateFromDecentralizedNetwork = async (): Promise<OasisState> => {
     try {
         const savedState = await gatherLight();
         
-        // Validate and merge the loaded state with the default state.
-        // This ensures that if a property is missing from the saved state (e.g., due to an older version or corruption),
-        // it falls back to the default for that specific property, preventing crashes and data loss for other properties.
+        const defaultAgents = defaultState.agents;
+        const savedAgents = savedState.agents && Array.isArray(savedState.agents) ? savedState.agents : [];
+        const savedAgentIds = new Set(savedAgents.map(a => a.id));
+        const mergedAgents = [...savedAgents];
+
+        // Add default agents that are not already present in the saved state.
+        // This preserves user-created agents while allowing new default agents to be added on updates.
+        defaultAgents.forEach(defaultAgent => {
+            if (!savedAgentIds.has(defaultAgent.id)) {
+                mergedAgents.push(defaultAgent);
+            }
+        });
+
         const finalState: OasisState = {
-            agents: Array.isArray(savedState.agents) ? savedState.agents : defaultState.agents,
+            agents: mergedAgents.length > 0 ? mergedAgents : defaultState.agents,
             penthouseLayout: Array.isArray(savedState.penthouseLayout) ? savedState.penthouseLayout : defaultState.penthouseLayout,
             journalEntries: typeof savedState.journalEntries === 'object' && savedState.journalEntries !== null ? savedState.journalEntries : defaultState.journalEntries,
             roundTableMessages: Array.isArray(savedState.roundTableMessages) ? savedState.roundTableMessages : defaultState.roundTableMessages,
+            unleashedMode: savedState.unleashedMode ?? false,
         };
         
         return finalState;

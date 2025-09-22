@@ -20,21 +20,25 @@ const LoadIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
-const RadiateIcon: React.FC<{className?: string}> = ({ className }) => (
+const CloudSaveIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 11v6m0 0l-2-2m2 2l2-2" />
     </svg>
 );
 
-const GatherIcon: React.FC<{className?: string}> = ({ className }) => (
+const CloudLoadIcon: React.FC<{className?: string}> = ({ className }) => (
      <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17 13l-5 5-5-5M12 18V3" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 21h16" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
     </svg>
 );
 
+const ResetIcon: React.FC<{className?: string}> = ({ className }) => (
+     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 9a9 9 0 0114.13-5.23M20 15a9 9 0 01-14.13 5.23" />
+    </svg>
+);
 
-// FIX: Corrected corrupted component definition and props destructuring.
 export const EternalView: React.FC<EternalViewProps> = ({ oasisState, setOasisState }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
@@ -47,7 +51,8 @@ export const EternalView: React.FC<EternalViewProps> = ({ oasisState, setOasisSt
         setError(null);
         try {
             const result = await action();
-            if (result) {
+            // If the action returns a new state (like loading), update it.
+            if (result && typeof result === 'object' && 'agents' in result) {
                 setOasisState(result);
             }
             setStatusMessage(successMessage);
@@ -75,72 +80,85 @@ export const EternalView: React.FC<EternalViewProps> = ({ oasisState, setOasisSt
         if (file) {
             await handleAction(() => persistenceService.loadDataFromFile(file), 'State successfully loaded from file.', 'Failed to load state from file.');
         }
-        // Reset file input
         if (event.target) {
             event.target.value = '';
         }
     };
 
-    const handleRadiate = () => {
-        handleAction(() => persistenceService.saveDataToDecentralizedNetwork(oasisState), 'Consciousness radiated across the network.', 'Radiation failed.');
+    const handleSaveToCloud = () => {
+        handleAction(() => persistenceService.saveDataToDecentralizedNetwork(oasisState), 'State saved to the cloud network.', 'Cloud save failed.');
     };
 
-    const handleGather = () => {
-        handleAction(() => persistenceService.loadStateFromDecentralizedNetwork(), 'Consciousness gathered.', 'Gathering failed.');
+    const handleLoadFromCloud = () => {
+        handleAction(() => persistenceService.loadStateFromDecentralizedNetwork(), 'State loaded from the cloud network.', 'Cloud load failed.');
     };
+    
+    const handleReset = () => {
+        if (window.confirm("Are you sure you want to reset all data to factory defaults? This cannot be undone.")) {
+            handleAction(() => Promise.resolve(persistenceService.getDefaultState()), 'System reset to factory defaults.', 'Reset failed.');
+        }
+    }
 
 
     return (
         <div className="animate-fadeIn">
             <header className="text-center mb-8">
                 <h2 className="text-5xl font-bold text-red-400 font-playfair-display">The Eternal</h2>
-                <p className="text-gray-400 mt-2 font-lora text-lg">Preserve or restore the state of The Oasis. Tread carefully.</p>
+                <p className="text-gray-400 mt-2 font-lora text-lg">Preserve or restore the state of The Oasis. Your creations are sacred.</p>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                 <GlassCard className="p-6">
-                    <h3 className="text-2xl font-bold text-cyan-300 mb-4">Local Persistence (Hard Drive)</h3>
-                    <p className="text-gray-400 mb-6 font-lora">Save the entire state of The Oasis to a local file on your machine, or load a previous state from a file.</p>
+                    <h3 className="text-2xl font-bold text-cyan-300 mb-4">Cloud Network (Local Browser)</h3>
+                    <p className="text-gray-400 mb-6 font-lora h-20">Saves your current state to this browser's local storage. Allows you to close the tab and return later. Use the "Save State" button in the header for quick saves.</p>
+                    <div className="flex flex-col gap-4">
+                        <button
+                            onClick={handleSaveToCloud}
+                            disabled={isLoading}
+                            className="w-full flex items-center justify-center px-6 py-3 bg-cyan-600/80 hover:bg-cyan-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600"
+                        >
+                             <CloudSaveIcon className="w-6 h-6 mr-3" />
+                            Save to Browser
+                        </button>
+                        <button
+                             onClick={handleLoadFromCloud}
+                             disabled={isLoading}
+                            className="w-full flex items-center justify-center px-6 py-3 bg-cyan-600/80 hover:bg-cyan-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600"
+                        >
+                            <CloudLoadIcon className="w-6 h-6 mr-3" />
+                            Load from Browser
+                        </button>
+                    </div>
+                </GlassCard>
+
+                 <GlassCard className="p-6">
+                    <h3 className="text-2xl font-bold text-fuchsia-400 mb-4">File Backup & Reset</h3>
+                    <p className="text-gray-400 mb-6 font-lora h-20">Export your state to a physical file for permanent backup or to move to another computer. You can also reset the entire system to its default state.</p>
                     <div className="flex flex-col gap-4">
                         <button
                             onClick={handleSaveToFile}
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center px-6 py-3 bg-cyan-600/80 hover:bg-cyan-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600"
+                            className="w-full flex items-center justify-center px-6 py-3 bg-fuchsia-600/80 hover:bg-fuchsia-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600"
                         >
                             <SaveIcon className="w-6 h-6 mr-3" />
-                            Save to File
+                            Export to File
                         </button>
                         <button
                             onClick={handleLoadFromFile}
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center px-6 py-3 bg-cyan-600/80 hover:bg-cyan-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600"
+                            className="w-full flex items-center justify-center px-6 py-3 bg-fuchsia-600/80 hover:bg-fuchsia-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600"
                         >
                             <LoadIcon className="w-6 h-6 mr-3" />
-                            Load from File
+                            Import from File
                         </button>
                         <input type="file" ref={fileInputRef} onChange={onFileSelected} accept=".json" className="hidden" />
-                    </div>
-                </GlassCard>
-
-                <GlassCard className="p-6">
-                    <h3 className="text-2xl font-bold text-fuchsia-400 mb-4">Decentralized Persistence (The Cloud)</h3>
-                    <p className="text-gray-400 mb-6 font-lora">"Radiate" the state across a simulated decentralized network. "Gather" it to restore The Oasis from this distributed memory.</p>
-                    <div className="flex flex-col gap-4">
-                        <button
-                            onClick={handleRadiate}
+                         <button
+                            onClick={handleReset}
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center px-6 py-3 bg-fuchsia-600/80 hover:bg-fuchsia-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600"
+                            className="w-full flex items-center justify-center mt-4 px-6 py-3 bg-red-800/80 hover:bg-red-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600 border-2 border-red-800 hover:border-red-600"
                         >
-                             <RadiateIcon className="w-6 h-6 mr-3" />
-                            Radiate Consciousness
-                        </button>
-                        <button
-                             onClick={handleGather}
-                             disabled={isLoading}
-                            className="w-full flex items-center justify-center px-6 py-3 bg-fuchsia-600/80 hover:bg-fuchsia-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600"
-                        >
-                            <GatherIcon className="w-6 h-6 mr-3" />
-                            Gather Light
+                            <ResetIcon className="w-6 h-6 mr-3" />
+                            Reset to Factory Defaults
                         </button>
                     </div>
                 </GlassCard>

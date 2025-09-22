@@ -36,12 +36,16 @@ export interface RoundTableAgent {
     colorHex: string;
     avatarUrl?: string;
     currentActivity: string;
+    category: 'Inner Circle' | 'Mansion Staff' | 'Consultant' | 'Creative';
     pet?: {
         name: string;
         type: string;
     };
-    voiceSampleUrl?: string;
-    voiceCloned?: boolean;
+    voice: {
+        presetName?: string; // Name of the SpeechSynthesisVoice to use
+        sampleUrl?: string;  // URL of the uploaded/recorded audio sample
+        isCloned: boolean;   // True if the voice has been "cloned"
+    };
     body?: {
         torsoScale?: number;
         armScale?: number;
@@ -58,6 +62,7 @@ export interface ChatMessage {
     sources?: { uri: string; title: string }[];
     agent?: RoundTableAgent;
     videoGenerationOperation?: any;
+    videoGenerationStatus?: 'interrupted';
     originalPrompt?: string;
     fileName?: string;
     fileType?: string;
