@@ -1,5 +1,5 @@
 {
-  "name": "the new oasis ",
+  "name": "oasis ",
   "description": "A cloud-native, AI-driven operating system designed to automate digital workflows through autonomous 'cloud employees'. The Oasis uses advanced vision-language models to interact with software by visually interpreting screens, much like a human would.",
   "requestFramePermissions": [
     "microphone",
