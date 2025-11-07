@@ -1,42 +1,6 @@
 import * as THREE from 'three';
 import type { RoundTableAgent } from '../../../types';
 
-const createBlinkingEyes = (head: THREE.Mesh) => {
-    const eyeGroup = new THREE.Group();
-    
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const eyeLidMaterial = new THREE.MeshBasicMaterial({ color: (head.material as THREE.MeshStandardMaterial).color });
-
-    const eyeGeometry = new THREE.SphereGeometry(0.08, 16, 8);
-    
-    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    leftEye.position.set(-0.15, 0.1, 0.45);
-    
-    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    rightEye.position.set(0.15, 0.1, 0.45);
-
-    eyeGroup.add(leftEye, rightEye);
-
-    const lidGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.2, 16, 1, false, 0, Math.PI);
-    const topLid = new THREE.Mesh(lidGeometry, eyeLidMaterial);
-    topLid.scale.set(1, 0.5, 1); // Make it flatter
-    topLid.rotation.z = Math.PI / 2;
-    topLid.rotation.y = Math.PI / 2;
-    
-    const leftLid = topLid.clone();
-    leftLid.position.set(-0.15, 0.1, 0.46);
-    leftLid.name = "leftLid";
-    
-    const rightLid = topLid.clone();
-    rightLid.position.set(0.15, 0.1, 0.46);
-    rightLid.name = "rightLid";
-
-    eyeGroup.add(leftLid, rightLid);
-
-    return eyeGroup;
-};
-
-
 export const createMaggieModel = (): THREE.Group => {
     const group = new THREE.Group();
 
@@ -151,7 +115,8 @@ export const createMaggieModel = (): THREE.Group => {
             }
         }
     };
-
+    
+    group.traverse(child => { if (child instanceof THREE.Mesh) child.castShadow = true; });
     return group;
 };
 

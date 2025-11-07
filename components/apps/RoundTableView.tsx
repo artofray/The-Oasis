@@ -35,16 +35,19 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
             const newMap: Record<string, SpeechSynthesisVoice | undefined> = {};
             const englishVoices = voices.filter(voice => voice.lang.startsWith('en-'));
             const usableVoices = englishVoices.length > 0 ? englishVoices : voices;
-            
-            agents.forEach((agent, index) => {
+
+            if (usableVoices.length === 0) return; // No voices to assign
+
+            agents.forEach((agent) => {
                 let foundVoice: SpeechSynthesisVoice | undefined;
                 // 1. Try to find by preset name
                 if (agent.voice.presetName) {
                     foundVoice = usableVoices.find(v => v.name === agent.voice.presetName);
                 }
-                // 2. If no preset or not found, fall back to hash
+                // 2. If no preset or not found, fall back to a stable hash-based assignment
                 if (!foundVoice) {
-                    foundVoice = usableVoices[index % usableVoices.length];
+                    const hash = agent.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                    foundVoice = usableVoices[hash % usableVoices.length];
                 }
                 newMap[agent.id] = foundVoice;
             });
@@ -293,6 +296,7 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                 onCreateAgent={handleCreateAgent}
             />
             <div className="flex flex-col flex-1">
+                {/* FIX: Wrap ChatWindow in ErrorBoundary to catch rendering errors and prevent the whole app from crashing. */}
                 <ErrorBoundary>
                     <ChatWindow messages={messages} />
                 </ErrorBoundary>

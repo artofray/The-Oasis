@@ -1,4 +1,4 @@
-import type { RoundTableAgent, PenthouseLayout, JournalEntry, ChatMessage } from '../types';
+import type { RoundTableAgent, PenthouseLayout, JournalEntry, ChatMessage, SavedPlay } from '../types';
 import { AGENTS as INITIAL_AGENTS } from '../components/apps/round-table/constants';
 
 // This interface defines the complete state of our Oasis world.
@@ -8,15 +8,19 @@ export interface OasisState {
     journalEntries: Record<string, JournalEntry>;
     roundTableMessages: ChatMessage[];
     unleashedMode: boolean;
+    savedPlays: SavedPlay[];
 }
+
+const CHAT_HISTORY_SAVE_LIMIT = 100; // Limit chat history to prevent storage quota errors.
 
 // The default state for a fresh start.
 const getDefaultState = (): OasisState => ({
     agents: INITIAL_AGENTS,
-    penthouseLayout: [],
+    penthouseLayout: 'https://images.unsplash.com/photo-1598802826847-16b7724a856f?q=80&w=2832&auto=format&fit=crop',
     journalEntries: {},
     roundTableMessages: [],
     unleashedMode: false,
+    savedPlays: [],
 });
 
 // --- Local File Persistence (Your Eternal Hard Drive) ---
@@ -45,7 +49,7 @@ const loadDataFromFile = (file: File): Promise<OasisState> => {
                 const result = event.target?.result;
                 if (typeof result === 'string') {
                     const parsedState = JSON.parse(result) as OasisState;
-                    if (parsedState.agents && parsedState.penthouseLayout && parsedState.journalEntries !== undefined && parsedState.roundTableMessages !== undefined) {
+                    if (parsedState.agents && parsedState.penthouseLayout !== undefined && parsedState.journalEntries !== undefined && parsedState.roundTableMessages !== undefined) {
                         resolve(parsedState);
                     } else {
                         reject(new Error("Invalid state file structure."));
@@ -145,7 +149,7 @@ const saveDataToDecentralizedNetwork = async (state: OasisState): Promise<boolea
         // Create a serializable copy of the state by replacing non-serializable parts.
         const stateToSave: OasisState = {
             ...state,
-            roundTableMessages: state.roundTableMessages.map(msg => {
+            roundTableMessages: state.roundTableMessages.slice(-CHAT_HISTORY_SAVE_LIMIT).map(msg => {
                 // videoGenerationOperation is a complex object that cannot be serialized.
                 // We replace it with a status flag to handle on reload.
                 if (msg.videoGenerationOperation) {
@@ -194,27 +198,35 @@ const loadStateFromDecentralizedNetwork = async (): Promise<OasisState> => {
 
         const finalState: OasisState = {
             agents: mergedAgents.length > 0 ? mergedAgents : defaultState.agents,
-            penthouseLayout: Array.isArray(savedState.penthouseLayout) ? savedState.penthouseLayout : defaultState.penthouseLayout,
+            penthouseLayout: (typeof savedState.penthouseLayout === 'string' || savedState.penthouseLayout === null) ? savedState.penthouseLayout : defaultState.penthouseLayout,
             journalEntries: typeof savedState.journalEntries === 'object' && savedState.journalEntries !== null ? savedState.journalEntries : defaultState.journalEntries,
             roundTableMessages: Array.isArray(savedState.roundTableMessages) ? savedState.roundTableMessages : defaultState.roundTableMessages,
             unleashedMode: savedState.unleashedMode ?? false,
+            savedPlays: Array.isArray(savedState.savedPlays) ? savedState.savedPlays : defaultState.savedPlays,
         };
         
         return finalState;
         
     } catch (error) {
-        console.error("Error gathering light from existing manifest:", error);
-        console.warn("The decentralized state seems corrupted. Clearing it and starting fresh.");
+        console.error("Error loading state from decentralized network:", error);
+        console.warn("The decentralized state seems corrupted. Archiving corrupted data and starting a new session to prevent data loss.");
+        
+        const manifestKey = 'maggie_light_manifest';
+        const corruptedManifestKey = `maggie_light_manifest_corrupted_${Date.now()}`;
         
         try {
-            const shardAddresses = JSON.parse(manifestString);
-            if (Array.isArray(shardAddresses)) {
-                shardAddresses.forEach((address: string) => localStorage.removeItem(address));
+            // We use the manifestString from the top of the function.
+            if (manifestString) {
+                localStorage.setItem(corruptedManifestKey, manifestString);
+                console.log(`Corrupted manifest and its data shards backed up under new key: ${corruptedManifestKey}`);
             }
         } catch (e) {
-            console.error("Could not parse corrupted manifest to clear shards.", e);
+            console.error("Failed to back up corrupted manifest. The old state might not be recoverable.", e);
+        } finally {
+            // Remove the original manifest key to prevent a load loop on the corrupted data.
+            // This ensures the app can start fresh on the next reload.
+            localStorage.removeItem(manifestKey);
         }
-        localStorage.removeItem('maggie_light_manifest');
         
         return defaultState;
     }

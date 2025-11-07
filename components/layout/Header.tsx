@@ -27,8 +27,14 @@ const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
+const ErrorIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+);
+
 export const Header: React.FC<HeaderProps> = ({ unleashedMode, setUnleashedMode, saveState }) => {
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
     const handleSave = async () => {
         setSaveStatus('saving');
@@ -37,7 +43,8 @@ export const Header: React.FC<HeaderProps> = ({ unleashedMode, setUnleashedMode,
             setSaveStatus('saved');
             setTimeout(() => setSaveStatus('idle'), 2000);
         } else {
-            setSaveStatus('idle'); // Or show an error state
+            setSaveStatus('error');
+            setTimeout(() => setSaveStatus('idle'), 2500);
         }
     };
     
@@ -46,7 +53,9 @@ export const Header: React.FC<HeaderProps> = ({ unleashedMode, setUnleashedMode,
             case 'saving':
                 return <><svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Saving...</>;
             case 'saved':
-                return <><CheckIcon className="h-5 w-5 mr-2" />Saved!</>;
+                return <><CheckIcon className="h-5 w-5 mr-2 animate-popIn" />Saved!</>;
+            case 'error':
+                return <><ErrorIcon className="h-5 w-5 mr-2" />Save Failed</>;
             case 'idle':
             default:
                 return <><SaveIcon className="h-5 w-5 mr-2" />Save State</>;
@@ -59,17 +68,24 @@ export const Header: React.FC<HeaderProps> = ({ unleashedMode, setUnleashedMode,
                 <span className="text-red-400">Maggie's Oasis</span>
             </h1>
             <div className="flex items-center gap-6">
-                <button 
-                    onClick={handleSave}
-                    disabled={saveStatus !== 'idle'}
-                    className={`flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 ${
-                        saveStatus === 'saved' 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-cyan-600/80 hover:bg-cyan-600 text-white disabled:bg-gray-500'
-                    }`}
-                >
-                    {getSaveButtonContent()}
-                </button>
+                <div className="relative group">
+                    <button 
+                        onClick={handleSave}
+                        disabled={saveStatus !== 'idle'}
+                        className={`flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 w-32 ${
+                            saveStatus === 'saved' 
+                                ? 'bg-green-600 text-white' 
+                            : saveStatus === 'error'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-cyan-600/80 hover:bg-cyan-600 text-white disabled:bg-gray-500'
+                        }`}
+                    >
+                        {getSaveButtonContent()}
+                    </button>
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max px-3 py-1.5 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none z-20">
+                        Saves the current state to this browser.
+                    </div>
+                </div>
                  <label htmlFor="unleashed-toggle" className="flex items-center cursor-pointer group">
                     <div className="relative">
                         <input 

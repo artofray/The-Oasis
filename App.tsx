@@ -19,13 +19,14 @@ import { AvatarStudioView } from './components/apps/AvatarStudioView';
 import { EternalView } from './components/apps/EternalView';
 import { VoiceVideoChatView } from './components/apps/VoiceVideoChatView';
 import { Header } from './components/layout/Header';
-import type { View, RoundTableAgent, PenthouseLayout, JournalEntry, ChatMessage } from './types';
+import type { View, RoundTableAgent, PenthouseLayout, JournalEntry, ChatMessage, SandboxEnvironment, SavedPlay } from './types';
 import { persistenceService, OasisState } from './services/persistenceService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('round_table');
   const [oasisState, setOasisState] = useState<OasisState | null>(null);
   const [speakingAgentId, setSpeakingAgentId] = useState<string | null>(null);
+  const [sandboxEnvironment, setSandboxEnvironment] = useState<SandboxEnvironment>('Default');
   const oasisStateRef = useRef<OasisState | null>(null);
   oasisStateRef.current = oasisState;
   
@@ -77,7 +78,7 @@ const App: React.FC = () => {
     );
   }
 
-  const { agents, penthouseLayout, journalEntries, roundTableMessages, unleashedMode } = oasisState;
+  const { agents, penthouseLayout, journalEntries, roundTableMessages, unleashedMode, savedPlays } = oasisState;
 
   const setAgents = (updater: RoundTableAgent[] | ((prev: RoundTableAgent[]) => RoundTableAgent[])) => {
     setOasisState(prev => {
@@ -107,6 +108,14 @@ const App: React.FC = () => {
     setOasisState(prev => prev ? { ...prev, unleashedMode: mode } : null);
   };
 
+  const setSavedPlays = (updater: SavedPlay[] | ((prev: SavedPlay[]) => SavedPlay[])) => {
+    setOasisState(prev => {
+        if (!prev) return null;
+        const newPlays = typeof updater === 'function' ? updater(prev.savedPlays) : updater;
+        return { ...prev, savedPlays: newPlays };
+    });
+  };
+
 
   const renderView = () => {
     switch (currentView) {
@@ -123,15 +132,15 @@ const App: React.FC = () => {
       case 'tarot_journal':
         return <TarotJournalView entries={journalEntries} setEntries={setJournalEntries} />;
       case 'theatre':
-        return <TheatreView agents={agents} />;
+        return <TheatreView agents={agents} unleashedMode={unleashedMode} savedPlays={savedPlays} setSavedPlays={setSavedPlays} />;
       case 'sandbox':
-        return <SandboxView agents={agents} setAgents={setAgents} />;
+        return <SandboxView agents={agents} setAgents={setAgents} environment={sandboxEnvironment} setEnvironment={setSandboxEnvironment} />;
       case 'murder_mystery':
         return <MurderMysteryView agents={agents} unleashedMode={unleashedMode} />;
       case 'poolside':
         return <PoolsideView agents={agents} />;
       case 'penthouse':
-        return <PenthouseView agents={agents} layout={penthouseLayout} setLayout={setPenthouseLayout} />;
+        return <PenthouseView agents={agents} layout={penthouseLayout} setLayout={setPenthouseLayout} unleashedMode={unleashedMode} />;
       case 'activities':
         return <ActivitiesView agents={agents} setAgents={setAgents} unleashedMode={unleashedMode} />;
       case 'avatar_studio':
@@ -160,7 +169,13 @@ const App: React.FC = () => {
           {renderView()}
         </div>
       </main>
-      <MyAiAssistant setCurrentView={setCurrentView} agents={agents} speakingAgentId={speakingAgentId} setSpeakingAgentId={setSpeakingAgentId} />
+      <MyAiAssistant 
+        setCurrentView={setCurrentView} 
+        agents={agents} 
+        speakingAgentId={speakingAgentId} 
+        setSpeakingAgentId={setSpeakingAgentId}
+        setSandboxEnvironment={setSandboxEnvironment}
+       />
     </div>
   );
 };

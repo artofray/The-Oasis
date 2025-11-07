@@ -5,6 +5,9 @@ import * as roundTableService from '../../services/roundTableService';
 import Spinner from './tarot-journal/Spinner';
 import { UploadIcon, XIcon } from './tarot-journal/Icons';
 import { AvatarFineTuneModal } from './avatar-studio/AvatarFineTuneModal';
+import { useSpeech } from '../../hooks/useSpeech';
+import { AgentEditModal } from './round-table/AgentEditModal';
+import { NEW_AGENT_TEMPLATE } from './round-table/constants';
 
 interface AvatarStudioViewProps {
     agents: RoundTableAgent[];
@@ -42,6 +45,41 @@ export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setA
     const [isTuning, setIsTuning] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
+    // State and functions for creating/editing agents
+    const { voices } = useSpeech();
+    const [modalState, setModalState] = useState<{ isOpen: boolean; agent: RoundTableAgent | null }>({ isOpen: false, agent: null });
+
+    const handleCreateAgent = () => {
+        const newAgent: RoundTableAgent = { ...NEW_AGENT_TEMPLATE, id: `agent-${Date.now()}` };
+        setModalState({ isOpen: true, agent: newAgent });
+    };
+    
+    const handleEditAgent = () => {
+        if (selectedAgent) {
+            setModalState({ isOpen: true, agent: selectedAgent });
+        }
+    };
+
+    const handleSaveAgent = (updatedAgent: RoundTableAgent) => {
+        const agentExists = agents.some(a => a.id === updatedAgent.id);
+        if (agentExists) {
+            setAgents(prev => prev.map(a => a.id === updatedAgent.id ? updatedAgent : a));
+        } else {
+            setAgents(prev => [...prev, updatedAgent]);
+            setSelectedAgentId(updatedAgent.id);
+        }
+        setModalState({ isOpen: false, agent: null });
+    };
+
+    useEffect(() => {
+        // If the selected agent is deleted from another view, select the first available agent.
+        if (!selectedAgent && agents.length > 0) {
+            setSelectedAgentId(agents[0].id);
+        } else if (agents.length === 0) {
+            setSelectedAgentId('');
+        }
+    }, [agents, selectedAgent]);
+    
     useEffect(() => {
         setPrompt('');
         setLookAlikePrompt('');
@@ -53,7 +91,27 @@ export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setA
     }, [selectedAgentId, generationMode]);
 
     if (!selectedAgent) {
-        return <div className="text-center text-red-400">No agent selected or available in the Studio.</div>;
+        return (
+             <div className="text-center text-gray-400 p-8">
+                <h2 className="text-2xl font-bold text-purple-300 mb-4">No agents found in the studio.</h2>
+                <p className="mb-6">Create a new agent to begin designing an avatar.</p>
+                <button 
+                    onClick={handleCreateAgent} 
+                    className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-white font-bold"
+                >
+                    Create a New Agent
+                </button>
+                {modalState.isOpen && modalState.agent && (
+                    <AgentEditModal
+                        agent={modalState.agent}
+                        onSave={handleSaveAgent}
+                        onClose={() => setModalState({ isOpen: false, agent: null })}
+                        voices={voices}
+                        unleashedMode={unleashedMode}
+                    />
+                )}
+            </div>
+        );
     }
     
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,13 +145,36 @@ export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setA
         try {
             let result: string | null = null;
             switch (generationMode) {
-                case 'description':
-                    result = await roundTableService.generateAvatar(prompt, unleashedMode);
+                case 'description': {
+                    if (selectedAgent.avatarUrl) {
+                        // If there's an existing avatar, use it as a base for editing to preserve likeness.
+                        const editPrompt = `Give the character a new look as described: ${prompt}. Preserve the character's core facial features.`;
+                        
+                        let base64Image: string;
+                        let mimeType: string;
+
+                        if (selectedAgent.avatarUrl.startsWith('data:')) {
+                            const dataUrl = selectedAgent.avatarUrl;
+                            mimeType = dataUrl.substring(dataUrl.indexOf(':') + 1, dataUrl.indexOf(';'));
+                            base64Image = dataUrl.split(',')[1];
+                        } else {
+                            const { base64, mimeType: fetchedMimeType } = await roundTableService.urlToBase64(selectedAgent.avatarUrl);
+                            base64Image = base64;
+                            mimeType = fetchedMimeType;
+                        }
+                        result = await roundTableService.editAvatar(base64Image, mimeType, editPrompt, unleashedMode);
+                    } else {
+                        // Fallback for agents with no avatar, generate from scratch.
+                        const fullDescription = `${selectedAgent.name} who is ${selectedAgent.description}. New look: ${prompt}`;
+                        result = await roundTableService.generateAvatar(fullDescription, unleashedMode);
+                    }
                     break;
+                }
                 case 'image':
                     if (uploadedImage) {
                         const base64Image = uploadedImage.dataUrl.split(',')[1];
-                        result = await roundTableService.generateAvatarFromImage(base64Image, uploadedImage.file.type, prompt || "Create a new avatar based on this image.", unleashedMode);
+                        const fullPrompt = `Create a new avatar for ${selectedAgent.name}. ${prompt || "Use the uploaded image as inspiration."}`;
+                        result = await roundTableService.generateAvatarFromImage(base64Image, uploadedImage.file.type, fullPrompt, unleashedMode);
                     }
                     break;
                 case 'lookalike':
@@ -246,18 +327,22 @@ export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setA
                 <p className="text-gray-400 mt-2 font-lora text-lg">Redefine your agent's appearance. Your imagination is the only limit.</p>
             </header>
 
-            <div className="max-w-md mx-auto mb-8">
-                <label htmlFor="agent-selector" className="block text-sm font-medium text-gray-300 mb-1">Select Agent to Edit</label>
-                <select
-                    id="agent-selector"
-                    value={selectedAgentId}
-                    onChange={(e) => setSelectedAgentId(e.target.value)}
-                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
-                >
-                    {agents.map(agent => (
-                        <option key={agent.id} value={agent.id}>{agent.name}</option>
-                    ))}
-                </select>
+            <div className="max-w-xl mx-auto mb-8">
+                <label htmlFor="agent-selector" className="block text-sm font-medium text-gray-300 mb-1">Select Agent</label>
+                <div className="flex gap-2">
+                    <select
+                        id="agent-selector"
+                        value={selectedAgentId}
+                        onChange={(e) => setSelectedAgentId(e.target.value)}
+                        className="flex-1 w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
+                    >
+                        {agents.map(agent => (
+                            <option key={agent.id} value={agent.id}>{agent.name}</option>
+                        ))}
+                    </select>
+                    <button onClick={handleEditAgent} title="Edit selected agent" className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors">Edit</button>
+                    <button onClick={handleCreateAgent} title="Create a new agent" className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg transition-colors">New</button>
+                </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
@@ -341,7 +426,15 @@ export const AvatarStudioView: React.FC<AvatarStudioViewProps> = ({ agents, setA
                         setNewAvatarUrl(finalAvatarUrl);
                         setIsTuning(false);
                     }}
-                    // FIX: Pass unleashedMode prop to AvatarFineTuneModal.
+                    unleashedMode={unleashedMode}
+                />
+            )}
+            {modalState.isOpen && modalState.agent && (
+                <AgentEditModal
+                    agent={modalState.agent}
+                    onSave={handleSaveAgent}
+                    onClose={() => setModalState({ isOpen: false, agent: null })}
+                    voices={voices}
                     unleashedMode={unleashedMode}
                 />
             )}

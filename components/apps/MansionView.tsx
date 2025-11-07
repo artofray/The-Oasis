@@ -19,7 +19,12 @@ const ResidentCard: React.FC<{ resident: RoundTableAgent }> = ({ resident }) => 
     return (
         <GlassCard className="p-4 flex flex-col h-full animate-fadeInUp">
             <div className="flex-shrink-0 h-64 w-full">
-                <img src={resident.avatarUrl} alt={resident.name} className="w-full h-full object-cover rounded-lg shadow-lg" />
+                <img 
+                    src={resident.avatarUrl} 
+                    alt={resident.name} 
+                    className="w-full h-full object-cover rounded-lg shadow-lg animate-idle-bob"
+                    style={{ animationDelay: `-${Math.random() * 8}s` }}
+                />
             </div>
             <div className="flex-1 flex flex-col mt-4">
                 <h3 className="text-xl font-bold text-cyan-300">{resident.name}</h3>

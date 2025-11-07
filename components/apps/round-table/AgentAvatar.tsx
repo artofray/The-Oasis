@@ -13,18 +13,24 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({ agent, size = 'md' }) 
         lg: 'w-32 h-32 text-4xl',
     };
 
+    const animationStyle = { animationDelay: `-${Math.random() * 8}s` };
+
     if (agent.avatarUrl) {
         return (
             <img 
                 src={agent.avatarUrl} 
                 alt={`${agent.name}'s avatar`}
-                className={`${sizeClasses[size]} rounded-full object-cover flex-shrink-0`} 
+                className={`${sizeClasses[size]} rounded-full object-cover flex-shrink-0 animate-idle-bob`} 
+                style={animationStyle}
             />
         )
     }
     
     return (
-        <div className={`${sizeClasses[size]} rounded-full ${agent.avatarColor} flex items-center justify-center font-bold text-white flex-shrink-0`}>
+        <div 
+            className={`${sizeClasses[size]} rounded-full ${agent.avatarColor} flex items-center justify-center font-bold text-white flex-shrink-0 animate-idle-bob`}
+            style={animationStyle}
+        >
             {agent.name.charAt(0)}
         </div>
     );

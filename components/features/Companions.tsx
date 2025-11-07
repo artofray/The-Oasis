@@ -35,15 +35,25 @@ const AgentCard: React.FC<{ agent: RoundTableAgent; isSpeaking: boolean }> = ({ 
         return (hash % 80) + 20; // Bond level between 20 and 100
     }, [agent.id]);
 
-    const avatarClasses = `w-12 h-12 rounded-full object-cover flex-shrink-0 transition-all ${isSpeaking ? 'is-speaking-avatar' : ''}`;
+    const animationClass = isSpeaking ? 'is-speaking-avatar' : 'animate-idle-bob';
+    const avatarClasses = `w-12 h-12 rounded-full object-cover flex-shrink-0 transition-all ${animationClass}`;
+    const animationStyle = isSpeaking ? {} : { animationDelay: `-${Math.random() * 8}s` };
 
     return (
         <div className={`bg-black/20 p-3 rounded-lg flex items-center gap-3 transition-all ${isSpeaking ? 'bg-amber-900/40' : ''}`}>
              <div className={`relative ${isSpeaking ? 'is-speaking-glow rounded-full' : ''}`}>
                 {agent.avatarUrl ? (
-                    <img src={agent.avatarUrl} alt={agent.name} className={avatarClasses} />
+                    <img 
+                        src={agent.avatarUrl} 
+                        alt={agent.name} 
+                        className={avatarClasses}
+                        style={animationStyle}
+                    />
                 ) : (
-                    <div className={`${avatarClasses} ${agent.avatarColor} flex items-center justify-center font-bold text-white text-xl`}>
+                    <div 
+                        className={`${avatarClasses} ${agent.avatarColor} flex items-center justify-center font-bold text-white text-xl`}
+                        style={animationStyle}
+                    >
                         {agent.name.charAt(0)}
                     </div>
                 )}

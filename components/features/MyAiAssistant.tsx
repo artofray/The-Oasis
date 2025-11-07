@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { processNaturalLanguageCommand } from '../../services/geminiService';
-import type { View, CommandResponse, RoundTableAgent } from '../../types';
+import type { View, CommandResponse, RoundTableAgent, SandboxEnvironment } from '../../types';
 import { useSpeech } from '../../hooks/useSpeech';
 import { useTypedText } from '../../hooks/useTypedText';
 import { MyAiAvatar } from './MyAiAvatar';
@@ -12,9 +12,10 @@ interface MyAiAssistantProps {
   agents: RoundTableAgent[];
   speakingAgentId: string | null;
   setSpeakingAgentId: (id: string | null) => void;
+  setSandboxEnvironment: (env: SandboxEnvironment) => void;
 }
 
-export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, agents: allAgents, speakingAgentId, setSpeakingAgentId }) => {
+export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, agents: allAgents, speakingAgentId, setSpeakingAgentId, setSandboxEnvironment }) => {
     const [prompt, setPrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     
@@ -43,11 +44,16 @@ export const MyAiAssistant: React.FC<MyAiAssistantProps> = ({ setCurrentView, ag
         if (response.action === 'switch_view' && response.payload) {
             setCurrentView(response.payload as View);
         }
+
+        if (response.action === 'change_environment' && response.payload) {
+            setSandboxEnvironment(response.payload as SandboxEnvironment);
+            setCurrentView('sandbox');
+        }
         
         setPrompt('');
         setIsLoading(false);
 
-    }, [isLoading, setCurrentView, speak, setSpeakingAgentId]);
+    }, [isLoading, setCurrentView, speak, setSpeakingAgentId, setSandboxEnvironment]);
 
     useEffect(() => {
         setPrompt(transcript);
