@@ -1,4 +1,4 @@
-import type { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 // From Tarot service
 export enum SchemaType {
     STRING = 'STRING',
@@ -40,7 +40,8 @@ export type View =
   | 'activities'
   | 'avatar_studio'
   | 'eternal'
-  | 'voice_video_chat';
+  | 'voice_video_chat'
+  | 'near_guide';
 
 // From Round Table and related components
 export interface RoundTableAgent {

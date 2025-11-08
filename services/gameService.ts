@@ -130,7 +130,8 @@ export const generateSceneVideo = async (prompt: string, imageBase64: string, un
             finalPrompt = `${UNLEASHED_IMAGE_PREFIX}${finalPrompt}`;
         }
         const operation = await ai.models.generateVideos({
-            model: 'veo-2.0-generate-001',
+            // FIX: Updated deprecated model name.
+            model: 'veo-3.1-fast-generate-preview',
             prompt: finalPrompt,
             image: {
                 imageBytes: imageBase64,

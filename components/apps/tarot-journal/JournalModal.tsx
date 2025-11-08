@@ -46,7 +46,7 @@ const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, entry, dat
     if (event.target.files) {
       const files = Array.from(event.target.files);
       setImages(files);
-      // FIX: Cast file to Blob as TypeScript seems to have trouble inferring the type from `Array.from(FileList)`.
+      // FIX: Cast file to Blob as TypeScript can sometimes have trouble inferring that File is a subtype of Blob.
       const newPreviews = files.map(file => URL.createObjectURL(file as Blob));
       setImagePreviews(newPreviews);
     }

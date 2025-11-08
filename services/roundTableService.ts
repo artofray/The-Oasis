@@ -203,9 +203,10 @@ export const generateAvatarFromImage = async (base64Image: string, mimeType: str
         
         const standardPrompt = `Create a full-body character portrait of an AI assistant inspired by the provided image and the following description: "${prompt}". The new character should be a unique artistic interpretation. Digital painting, theatrical concept art, dramatic lighting, detailed, full character visible. Output a 9:16 aspect ratio image.`;
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image-preview',
+            // FIX: Updated deprecated model name and config.
+            model: 'gemini-2.5-flash-image',
             contents: { parts: [{ inlineData: { data: base64Image, mimeType } }, { text: standardPrompt }] },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
+            config: { responseModalities: [Modality.IMAGE] },
         });
         
         const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
@@ -229,9 +230,10 @@ export const editAvatar = async (base64Image: string, mimeType: string, editProm
 
         const standardPrompt = `Edit the character in the image based on this instruction: "${originalPrompt}". Preserve the overall character design, style, and aspect ratio. Only apply the requested change. The output should be a full-body 9:16 aspect ratio portrait.`;
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image-preview',
+            // FIX: Updated deprecated model name and config.
+            model: 'gemini-2.5-flash-image',
             contents: { parts: [{ inlineData: { data: base64Image, mimeType } }, { text: standardPrompt }] },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
+            config: { responseModalities: [Modality.IMAGE] },
         });
 
         const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
@@ -382,7 +384,8 @@ export const generateImageResponse = async (prompt: string, unleashedMode: boole
 export const generateVideoResponse = async (prompt: string): Promise<ChatMessage> => {
     try {
         const operation = await ai.models.generateVideos({
-            model: 'veo-2.0-generate-001',
+            // FIX: Updated deprecated model name.
+            model: 'veo-3.1-fast-generate-preview',
             prompt: `A cinematic, high-quality video of: ${prompt}`,
             config: { numberOfVideos: 1 }
         });
@@ -451,26 +454,28 @@ export const performVirtualTryOn = async (personImageUrl: string, clothingImageB
             // In unleashed mode, we can't send two images to our standard pipeline.
             // So we send both to the editing model and hope for the best with the prefix.
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image-preview',
+                // FIX: Updated deprecated model name and config.
+                model: 'gemini-2.5-flash-image',
                 contents: { parts: [
                     { inlineData: { data: personImageBase64, mimeType: personMimeType } },
                     { inlineData: { data: clothingImageBase64, mimeType: clothingMimeType } },
                     { text: `${UNLEASHED_IMAGE_PREFIX}${originalPrompt}` }
                 ]},
-                config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
+                config: { responseModalities: [Modality.IMAGE] },
             });
             const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
             return part?.inlineData ? `data:${part.inlineData.mimeType};base64,${part.inlineData.data}` : null;
         }
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image-preview',
+            // FIX: Updated deprecated model name and config.
+            model: 'gemini-2.5-flash-image',
             contents: { parts: [
                 { inlineData: { data: personImageBase64, mimeType: personMimeType } },
                 { inlineData: { data: clothingImageBase64, mimeType: clothingMimeType } },
                 { text: originalPrompt }
             ]},
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
+            config: { responseModalities: [Modality.IMAGE] },
         });
         
         const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);

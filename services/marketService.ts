@@ -32,17 +32,17 @@ const analysisSchema = {
 };
 
 export const getStockAnalysis = async (ticker: string): Promise<StockAnalysis> => {
-    const prompt = `Provide a detailed market analysis for the stock ticker: ${ticker}. Use the provided search tools to get the latest information.`;
+    const prompt = `Provide a detailed market analysis for the stock ticker: ${ticker}. Use the provided search tools to get the latest information. Respond in JSON format according to this schema: ${JSON.stringify(analysisSchema)}`;
     
     try {
         const response = await ai.models.generateContent({
             model,
             contents: prompt,
             config: {
+                // FIX: Removed responseMimeType and responseSchema as they are not allowed with the googleSearch tool.
+                // The prompt now instructs the model to return JSON instead.
                 systemInstruction: marcus.systemInstruction,
                 tools: [{ googleSearch: {} }],
-                responseMimeType: "application/json",
-                responseSchema: analysisSchema,
             },
         });
 

@@ -1,17 +1,16 @@
 import React from 'react';
 import { GlassCard } from '../../ui/GlassCard';
-// FIX: Import RoundTableAgent and Conversation types.
+// FIX: Imported Conversation and RoundTableAgent types to correctly type component props and variables.
 import type { Conversation, RoundTableAgent } from '../../../types';
 
 interface ConversationLogProps {
     conversations: Record<string, Conversation>;
-    // FIX: Use RoundTableAgent[] type for agents.
+    // FIX: Correctly typed the agents prop as an array of RoundTableAgent.
     agents: RoundTableAgent[];
 }
 
 export const ConversationLog: React.FC<ConversationLogProps> = ({ conversations, agents }) => {
-    // FIX: Object.values will now return Conversation[]
-    // FIX: Explicitly type `activeConversations` as Conversation[] to resolve TypeScript's inference of Object.values returning `unknown[]`.
+    // FIX: Explicitly typed `activeConversations` as Conversation[] to resolve TypeScript's inference of Object.values returning `unknown[]`.
     const activeConversations: Conversation[] = Object.values(conversations);
 
     if (activeConversations.length === 0) {

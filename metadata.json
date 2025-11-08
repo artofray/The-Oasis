@@ -1,8 +1,7 @@
 {
-  "name": "oasis ",
-  "description": "A cloud-native, AI-driven operating system designed to automate digital workflows through autonomous 'cloud employees'. The Oasis uses advanced vision-language models to interact with software by visually interpreting screens, much like a human would.",
+  "name": "NEAR Protocol Developer Guide",
+  "description": "A developer guide for the NEAR Protocol, showcasing tools, repositories, and documentation.",
   "requestFramePermissions": [
-    "microphone",
-    "camera"
+    "microphone"
   ]
 }

@@ -9,7 +9,7 @@ import Spinner from './tarot-journal/Spinner';
 
 interface VoiceVideoChatViewProps {
     agents: RoundTableAgent[];
-    // FIX: Add unleashedMode to props.
+    // FIX: Added unleashedMode prop to enable different content generation modes.
     unleashedMode: boolean;
 }
 
@@ -102,7 +102,7 @@ export const VoiceVideoChatView: React.FC<VoiceVideoChatViewProps> = ({ agents, 
             snapshot?.mimeType || '',
             prompt,
             currentMessages,
-            // FIX: Added missing unleashedMode argument.
+            // FIX: Passed the unleashedMode prop to the service function.
             unleashedMode
         );
         

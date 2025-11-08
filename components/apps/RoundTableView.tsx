@@ -296,7 +296,7 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                 onCreateAgent={handleCreateAgent}
             />
             <div className="flex flex-col flex-1">
-                {/* FIX: Wrap ChatWindow in ErrorBoundary to catch rendering errors and prevent the whole app from crashing. */}
+                {/* FIX: Wrapped ChatWindow in ErrorBoundary to catch rendering errors and prevent the whole app from crashing. */}
                 <ErrorBoundary>
                     <ChatWindow messages={messages} />
                 </ErrorBoundary>
@@ -318,7 +318,7 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                     onSave={handleSaveAgent}
                     onClose={() => setModalState({ isOpen: false, agent: null })}
                     voices={voices}
-                    // FIX: Pass unleashedMode prop to AgentEditModal.
+                    // FIX: Pass unleashedMode prop to AgentEditModal, as it's required for some avatar generation functions.
                     unleashedMode={unleashedMode}
                 />
             )}

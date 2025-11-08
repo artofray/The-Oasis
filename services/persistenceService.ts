@@ -1,4 +1,4 @@
-import type { RoundTableAgent, PenthouseLayout, JournalEntry, ChatMessage, SavedPlay } from '../types';
+import type { RoundTableAgent, PenthouseLayout, JournalEntry, ChatMessage, SavedPlay, SandboxEnvironment } from '../types';
 import { AGENTS as INITIAL_AGENTS } from '../components/apps/round-table/constants';
 
 // This interface defines the complete state of our Oasis world.
@@ -8,6 +8,7 @@ export interface OasisState {
     journalEntries: Record<string, JournalEntry>;
     roundTableMessages: ChatMessage[];
     unleashedMode: boolean;
+    sandboxEnvironment: SandboxEnvironment;
     savedPlays: SavedPlay[];
 }
 
@@ -20,6 +21,7 @@ const getDefaultState = (): OasisState => ({
     journalEntries: {},
     roundTableMessages: [],
     unleashedMode: false,
+    sandboxEnvironment: 'Default',
     savedPlays: [],
 });
 
@@ -202,6 +204,7 @@ const loadStateFromDecentralizedNetwork = async (): Promise<OasisState> => {
             journalEntries: typeof savedState.journalEntries === 'object' && savedState.journalEntries !== null ? savedState.journalEntries : defaultState.journalEntries,
             roundTableMessages: Array.isArray(savedState.roundTableMessages) ? savedState.roundTableMessages : defaultState.roundTableMessages,
             unleashedMode: savedState.unleashedMode ?? false,
+            sandboxEnvironment: savedState.sandboxEnvironment || defaultState.sandboxEnvironment,
             savedPlays: Array.isArray(savedState.savedPlays) ? savedState.savedPlays : defaultState.savedPlays,
         };
         
