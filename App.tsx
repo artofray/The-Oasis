@@ -18,7 +18,6 @@ import { ActivitiesView } from './components/apps/ActivitiesView';
 import { AvatarStudioView } from './components/apps/AvatarStudioView';
 import { EternalView } from './components/apps/EternalView';
 import { VoiceVideoChatView } from './components/apps/VoiceVideoChatView';
-import { NearGuideView } from './components/apps/NearGuideView';
 import { persistenceService, OasisState } from './services/persistenceService';
 import type { View, SandboxEnvironment } from './types';
 
@@ -99,7 +98,6 @@ const App: React.FC = () => {
             />;
             case 'eternal': return <EternalView oasisState={state} setOasisState={handleSetState} />;
             case 'voice_video_chat': return <VoiceVideoChatView agents={state.agents} unleashedMode={state.unleashedMode} />;
-            case 'near_guide': return <NearGuideView />;
             default: return <Dashboard />;
         }
     };

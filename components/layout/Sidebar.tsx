@@ -98,20 +98,11 @@ const VoiceVideoChatIcon = () => (
     </svg>
 );
 
-const NearIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-);
-
-
 const NAV_ITEMS: { id: View; name: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', name: 'Dashboard', icon: <DashboardIcon /> },
     { id: 'penthouse', name: 'Penthouse', icon: <PenthouseIcon /> },
     { id: 'avatar_studio', name: 'Avatar Studio', icon: <AvatarStudioIcon /> },
     { id: 'voice_video_chat', name: 'Voice & Video Chat', icon: <VoiceVideoChatIcon /> },
-    { id: 'near_guide', name: 'NEAR AI Guide', icon: <NearIcon /> },
     { id: 'activities', name: 'Activities', icon: <ActivitiesIcon /> },
     { id: 'mansion', name: 'Mansion', icon: <MansionIcon /> },
     { id: 'theatre', name: 'Theatre', icon: <TheatreIcon /> },
