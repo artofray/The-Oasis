@@ -100,6 +100,8 @@ const VoiceVideoChatIcon = () => (
 
 const NAV_ITEMS: { id: View; name: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', name: 'Dashboard', icon: <DashboardIcon /> },
+    { id: 'eternal', name: 'Eternal', icon: <EternalIcon /> },
+    { id: 'settings', name: 'Settings', icon: <SettingsIcon /> },
     { id: 'penthouse', name: 'Penthouse', icon: <PenthouseIcon /> },
     { id: 'avatar_studio', name: 'Avatar Studio', icon: <AvatarStudioIcon /> },
     { id: 'voice_video_chat', name: 'Voice & Video Chat', icon: <VoiceVideoChatIcon /> },
@@ -113,15 +115,13 @@ const NAV_ITEMS: { id: View; name: string; icon: React.ReactNode }[] = [
     { id: 'teach', name: 'Teach Agent', icon: <TeachIcon /> },
     { id: 'round_table', name: 'AI Round Table', icon: <RoundTableIcon /> },
     { id: 'tarot_journal', name: 'AI Tarot Journal', icon: <TarotIcon /> },
-    { id: 'eternal', name: 'Eternal', icon: <EternalIcon /> },
-    { id: 'settings', name: 'Settings', icon: <SettingsIcon /> },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
   return (
-    <nav className="w-20 bg-gray-900/50 border-r border-red-400/20 flex flex-col items-center py-6 space-y-6">
-      <div className="text-red-400 font-black text-2xl">O</div>
-      <div className="flex flex-col space-y-4">
+    <nav className="w-20 bg-gray-900/50 border-r border-red-400/20 flex flex-col items-center py-6">
+      <div className="text-red-400 font-black text-2xl flex-shrink-0 mb-6">O</div>
+      <div className="flex-1 w-full overflow-y-auto flex flex-col items-center space-y-4 custom-scrollbar">
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
