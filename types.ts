@@ -40,7 +40,8 @@ export type View =
   | 'activities'
   | 'avatar_studio'
   | 'eternal'
-  | 'voice_video_chat';
+  | 'voice_video_chat'
+  | 'data_streams';
 
 // From Round Table and related components
 export interface RoundTableAgent {

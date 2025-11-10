@@ -9,99 +9,46 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.repo-link {
-  color: #58a6ff;
-  text-decoration: none;
-  word-break: break-all;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-.repo-link:hover {
-  text-decoration: underline;
-}
+.animate-fadeIn { animation: fadeIn 0.5s ease-in-out forwards; }
 
-.table-container {
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  overflow: hidden;
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+.animate-fadeInUp { animation: fadeInUp 0.5s ease-in-out forwards; }
 
-.info-table {
-  width: 100%;
-  border-collapse: collapse;
+
+@keyframes idle-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
-
-.info-table th,
-.info-table td {
-  padding: 12px 16px;
-  text-align: left;
-  border-bottom: 1px solid #30363d;
+.animate-idle-bob {
+  animation: idle-bob 8s ease-in-out infinite;
 }
 
-.info-table th {
-  background-color: #161b22;
-  font-weight: 600;
-  font-size: 0.875rem;
+.is-speaking-avatar {
+    animation: pulse-scale 1.5s infinite;
+}
+.is-speaking-glow {
+    box-shadow: 0 0 15px 3px #f59e0b, 0 0 5px 1px #f59e0b inset;
+}
+@keyframes pulse-scale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
 
-.info-table td {
-  font-size: 0.875rem;
-  vertical-align: top;
-}
-
-.info-table tr:last-child td {
-  border-bottom: none;
-}
-
-.info-table td:nth-child(1) { width: 20%; }
-.info-table td:nth-child(2) { width: 50%; }
-.info-table td:nth-child(3) { width: 15%; }
-.info-table td:nth-child(4) { width: 15%; }
-
-
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.5;
-  border-radius: 9999px;
-  white-space: nowrap;
-}
-
-.badge-blue {
-  background-color: #1f6feb26;
-  color: #58a6ff;
-  border: 1px solid #1f6feb;
-}
-
-.badge-orange {
-  background-color: #fca32126;
-  color: #fca321;
-  border: 1px solid #fca321;
-}
-
-.header-badge {
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75rem;
-}
-.header-badge.green { background-color: #238636; color: white; }
-.header-badge.yellow { background-color: #f5d12d; color: #161b22; }
-.header-badge.red { background-color: #da3633; color: white; }
-.header-badge.blue { background-color: #1f6feb; color: white; }
-.header-badge.purple { background-color: #8957e5; color: white; }
-
-/* New styles for Live API App */
 @keyframes pulse-orb {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 20px 5px rgba(6, 182, 212, 0.3);
+    box-shadow: 0 0 20px 5px rgba(34, 211, 238, 0.3);
   }
   50% {
     transform: scale(1.05);
-    box-shadow: 0 0 40px 15px rgba(6, 182, 212, 0.5);
+    box-shadow: 0 0 40px 15px rgba(34, 211, 238, 0.5);
   }
 }
 
@@ -109,16 +56,8 @@ body {
   animation: pulse-orb 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-in-out forwards;
-}
-
-/* Custom scrollbar for sidebar */
+/* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -128,16 +67,16 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(248, 113, 113, 0.3); /* red-400 with opacity */
+  background-color: rgba(107, 114, 128, 0.5); /* gray-500 with opacity */
   border-radius: 20px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(248, 113, 113, 0.5);
+  background-color: rgba(107, 114, 128, 0.7);
 }
 
 /* For Firefox */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(248, 113, 113, 0.3) transparent;
+  scrollbar-color: rgba(107, 114, 128, 0.5) transparent;
 }

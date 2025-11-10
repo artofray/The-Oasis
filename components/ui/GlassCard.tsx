@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -9,7 +8,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', 
   return (
     <div
       {...rest}
-      className={`bg-black/20 backdrop-blur-xl border border-red-400/20 rounded-2xl shadow-lg shadow-red-500/5 ${className}`}
+      className={`bg-[#161b22]/80 backdrop-blur-sm border border-gray-700/50 rounded-lg ${className}`}
     >
       {children}
     </div>
