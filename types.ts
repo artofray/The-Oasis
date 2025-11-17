@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 // From Tarot service
 export enum SchemaType {
@@ -41,7 +42,10 @@ export type View =
   | 'avatar_studio'
   | 'eternal'
   | 'voice_video_chat'
-  | 'data_streams';
+  | 'data_streams'
+  | 'entertainment_hub'
+  | 'web_series'
+  | 'near_guide';
 
 // From Round Table and related components
 export interface RoundTableAgent {
@@ -84,6 +88,12 @@ export interface ChatMessage {
 }
 
 export type ChatMode = 'round_table' | 'interview' | 'debate';
+
+// From Chatbot.tsx
+export interface SimpleChatMessage {
+    role: 'user' | 'model';
+    text: string;
+}
 
 // From MyAiAssistant.tsx
 export type SandboxEnvironment = 'Default' | 'Sci-Fi' | 'Fantasy' | 'Urban';

@@ -253,7 +253,7 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                  {/* Chat overlay */}
                 <div className="absolute bottom-4 right-4 w-full max-w-sm">
                     <ErrorBoundary>
-                         <div className="h-64 bg-black/30 backdrop-blur-sm rounded-lg">
+                         <div className="h-64 bg-black/30 backdrop-blur-sm rounded-lg flex flex-col">
                              <ChatWindow messages={messages} />
                          </div>
                     </ErrorBoundary>

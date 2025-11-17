@@ -49,7 +49,6 @@ const AgentCard: React.FC<{ agent: RoundTableAgent; isSpeaking: boolean; isSelec
 
 export const ActiveAgents: React.FC<ActiveAgentsProps> = ({ agents, speakingAgentId, selectedAgentIds, onAgentToggle, onAgentCreate }) => {
     const maggie = agents.find(a => a.id === 'maggie');
-    const otherAgents = agents.filter(a => a.id !== 'maggie');
     
     return (
         <aside className="w-[320px] h-full bg-[#0d1117] border-l border-gray-800 p-4 flex flex-col space-y-4">
@@ -67,7 +66,7 @@ export const ActiveAgents: React.FC<ActiveAgentsProps> = ({ agents, speakingAgen
             </div>
 
             <div className="flex-1 space-y-2 overflow-y-auto pr-2 -mr-4 custom-scrollbar">
-                 {otherAgents.map(agent => (
+                 {agents.map(agent => (
                     <AgentCard 
                         key={agent.id}
                         agent={agent}

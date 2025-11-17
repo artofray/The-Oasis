@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -20,11 +21,16 @@ import { AvatarStudioView } from './components/apps/AvatarStudioView';
 import { EternalView } from './components/apps/EternalView';
 import { DataStreamsView } from './components/apps/DataStreamsView';
 import { VoiceVideoChatView } from './components/apps/VoiceVideoChatView';
+import { EntertainmentHubView } from './components/apps/EntertainmentHubView';
+import { WebSeriesView } from './components/apps/WebSeriesView';
+import { NearGuideView } from './components/apps/NearGuideView';
 import { persistenceService, OasisState } from './services/persistenceService';
 import type { View, SandboxEnvironment, RoundTableAgent } from './types';
 import { AgentEditModal } from './components/apps/round-table/AgentEditModal';
 import { useSpeech } from './hooks/useSpeech';
 import { NEW_AGENT_TEMPLATE } from './components/apps/round-table/constants';
+import { Chatbot } from './components/features/Chatbot';
+import { ChatbotToggle } from './components/ui/ChatbotToggle';
 
 const App: React.FC = () => {
     const [state, setState] = useState<OasisState | null>(null);
@@ -32,6 +38,7 @@ const App: React.FC = () => {
     const [speakingAgentId, setSpeakingAgentId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [isChatbotOpen, setIsChatbotOpen] = useState(false);
     
     // State lifted up for global access
     const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
@@ -153,6 +160,9 @@ const App: React.FC = () => {
             case 'eternal': return <EternalView oasisState={state} setOasisState={handleSetState} />;
             case 'voice_video_chat': return <VoiceVideoChatView agents={state.agents} unleashedMode={state.unleashedMode} />;
             case 'data_streams': return <DataStreamsView />;
+            case 'entertainment_hub': return <EntertainmentHubView agents={state.agents} unleashedMode={state.unleashedMode} />;
+            case 'web_series': return <WebSeriesView agents={state.agents} unleashedMode={state.unleashedMode} />;
+            case 'near_guide': return <NearGuideView />;
             default: return <Dashboard />;
         }
     };
@@ -199,6 +209,8 @@ const App: React.FC = () => {
                     unleashedMode={state.unleashedMode}
                 />
             )}
+            <Chatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
+            <ChatbotToggle onClick={() => setIsChatbotOpen(!isChatbotOpen)} hidden={isChatbotOpen} />
         </div>
     );
 };

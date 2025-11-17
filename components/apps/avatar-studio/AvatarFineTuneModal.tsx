@@ -1,15 +1,15 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import * as roundTableService from '../../../services/roundTableService';
 import Spinner from '../tarot-journal/Spinner';
 
 // A simple debounce function
 const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
-    // FIX: Changed type from 'number' to 'ReturnType<typeof setTimeout>' to handle different return types of setTimeout in browser vs. Node.js environments.
-    let timeout: ReturnType<typeof setTimeout>;
+    let timeout: number;
     return (...args: Parameters<F>): Promise<ReturnType<F>> =>
         new Promise(resolve => {
             clearTimeout(timeout);
-            timeout = setTimeout(() => resolve(func(...args)), waitFor);
+            timeout = window.setTimeout(() => resolve(func(...args)), waitFor);
         });
 };
 
@@ -19,7 +19,6 @@ interface AvatarFineTuneModalProps {
   onClose: () => void;
   baseAvatarUrl: string;
   onSave: (finalAvatarUrl: string) => void;
-  // FIX: Add unleashedMode to props.
   unleashedMode: boolean;
 }
 
@@ -47,7 +46,6 @@ export const AvatarFineTuneModal: React.FC<AvatarFineTuneModalProps> = ({ isOpen
         try {
             const blob = await dataUrlToBlob(imageToEdit);
             const base64Image = imageToEdit.split(',')[1];
-            // FIX: Added missing unleashedMode argument.
             const result = await roundTableService.editAvatar(base64Image, blob.type, prompt, unleashedMode);
             if (result) {
                 setCurrentAvatarUrl(result);
