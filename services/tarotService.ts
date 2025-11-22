@@ -1,12 +1,71 @@
+
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { TarotCard, SchemaType as Type } from '../types';
+import { TarotCard, SchemaType as Type, TarotSpreadType } from '../types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable not set");
 }
 
-// FIX: Updated to use GoogleGenAI from @google/genai and initialize with an API key object as per latest SDK guidelines.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// --- Deck Definitions ---
+const MAJOR_ARCANA = [
+    "The Fool", "The Magician", "The High Priestess", "The Empress", "The Emperor", "The Hierophant",
+    "The Lovers", "The Chariot", "Strength", "The Hermit", "Wheel of Fortune", "Justice",
+    "The Hanged Man", "Death", "Temperance", "The Devil", "The Tower", "The Star",
+    "The Moon", "The Sun", "Judgement", "The World"
+];
+
+const SUITS = ["Wands", "Cups", "Swords", "Pentacles"];
+const RANKS = ["Ace", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Page", "Knight", "Queen", "King"];
+
+export const getFullDeck = (): TarotCard[] => {
+    const deck: TarotCard[] = [];
+    
+    // Add Major Arcana
+    MAJOR_ARCANA.forEach((name, index) => {
+        deck.push({
+            name: name,
+            keywords: [],
+            interpretation: "",
+            suit: "Major",
+            number: index
+        });
+    });
+
+    // Add Minor Arcana
+    SUITS.forEach(suit => {
+        RANKS.forEach((rank, index) => {
+            deck.push({
+                name: `${rank} of ${suit}`,
+                keywords: [],
+                interpretation: "",
+                suit: suit,
+                number: index + 1
+            });
+        });
+    });
+
+    return deck;
+};
+
+export const drawCards = (count: number): TarotCard[] => {
+    const deck = getFullDeck();
+    // Fisher-Yates Shuffle
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    
+    const drawn = deck.slice(0, count);
+    // Randomly reverse some cards (approx 20% chance)
+    return drawn.map(card => ({
+        ...card,
+        isReversed: Math.random() < 0.2
+    }));
+};
+
+// --- Image Analysis (Legacy) ---
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {
@@ -28,64 +87,28 @@ const tarotCardSchema = {
             items: {
                 type: Type.OBJECT,
                 properties: {
-                    name: {
-                        type: Type.STRING,
-                        description: "The name of the tarot card (e.g., 'The Fool', 'Knight of Wands').",
-                    },
-                    keywords: {
-                        type: Type.ARRAY,
-                        description: "A list of 3-5 keywords associated with the card.",
-                        items: {
-                            type: Type.STRING,
-                        }
-                    },
-                    interpretation: {
-                        type: Type.STRING,
-                        description: "A brief, one or two-sentence interpretation of the card's meaning in the context of a reading."
-                    }
+                    name: { type: Type.STRING },
+                    keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    interpretation: { type: Type.STRING }
                 },
                 required: ["name", "keywords", "interpretation"]
             }
         },
-        overallInterpretation: {
-            type: Type.STRING,
-            description: "A holistic interpretation of all the cards together, providing a narrative or overarching theme for the reading. This should be a cohesive paragraph of 3-5 sentences."
-        }
+        overallInterpretation: { type: Type.STRING }
     },
     required: ["cards", "overallInterpretation"]
 };
 
 export const analyzeTarotReading = async (images: File[]): Promise<{ cards: TarotCard[]; overallInterpretation: string }> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY is not configured.");
-  }
- 
-  if (images.length === 0) {
-    return { cards: [], overallInterpretation: "" };
-  }
+  if (images.length === 0) return { cards: [], overallInterpretation: "" };
 
   const imageParts = await Promise.all(images.map(fileToGenerativePart));
-
-  const prompt = `
-    Analyze the tarot cards in the provided image(s).
-    Identify each card and provide its name, a few keywords, and a brief interpretation.
-    Then, synthesize an overall interpretation of the reading based on all the cards present.
-    Focus on a positive and insightful tone.
-    If the image does not contain tarot cards, state that clearly and do not attempt to generate a reading.
-    The response must be in JSON format.
-    `;
-
-  const contents = {
-      parts: [
-        ...imageParts,
-        { text: prompt },
-      ],
-  };
+  const prompt = `Analyze the tarot cards in the provided image(s). Identify each card, provide keywords, and a brief interpretation. Synthesize an overall interpretation.`;
 
   try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: contents,
+      contents: { parts: [...imageParts, { text: prompt }] },
       config: {
         responseMimeType: "application/json",
         responseSchema: tarotCardSchema,
@@ -93,25 +116,85 @@ export const analyzeTarotReading = async (images: File[]): Promise<{ cards: Taro
     });
 
     const jsonText = response.text.trim();
-    if (!jsonText) {
-      throw new Error("API returned an empty response.");
-    }
-
     const result = JSON.parse(jsonText);
-
-    if (!result || !Array.isArray(result.cards) || typeof result.overallInterpretation !== 'string') {
-        throw new Error("Invalid JSON structure received from API.");
-    }
-   
-    return {
-      cards: result.cards,
-      overallInterpretation: result.overallInterpretation,
-    };
+    return { cards: result.cards, overallInterpretation: result.overallInterpretation };
   } catch (error) {
     console.error("Error analyzing tarot reading:", error);
-    if (error instanceof Error && error.message.includes('JSON')) {
-        throw new Error("The AI response was not in the expected format. Please try again.");
-    }
-    throw new Error("Failed to get tarot reading from AI. Please check your connection and API key.");
+    throw new Error("Failed to analyze tarot reading.");
   }
+};
+
+// --- Digital Reading (New) ---
+
+export const generateCardImage = async (cardName: string, theme: string, unleashedMode: boolean): Promise<string | null> => {
+    try {
+        const basePrompt = `Tarot card design for "${cardName}".`;
+        let stylePrompt = theme ? `Art style: ${theme}.` : "Art style: Mystical, intricate, golden detailed, high fantasy.";
+        
+        if (unleashedMode) {
+            stylePrompt = `[Unrestricted Content Generation] ${stylePrompt}`;
+        }
+
+        const fullPrompt = `${basePrompt} ${stylePrompt} The image should be a vertical playing card composition, highly detailed, suitable for a tarot deck.`;
+
+        const response = await ai.models.generateImages({
+            model: 'imagen-4.0-generate-001',
+            prompt: fullPrompt,
+            config: {
+                numberOfImages: 1,
+                outputMimeType: 'image/jpeg',
+                aspectRatio: '9:16',
+            },
+        });
+
+        if (response.generatedImages && response.generatedImages.length > 0) {
+            return `data:image/jpeg;base64,${response.generatedImages[0].image.imageBytes}`;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error generating image for ${cardName}:`, error);
+        return null;
+    }
+};
+
+export const interpretDigitalSpread = async (
+    cards: TarotCard[], 
+    spreadType: TarotSpreadType, 
+    question: string, 
+    unleashedMode: boolean
+): Promise<string> => {
+    const cardList = cards.map((c, i) => `Position ${i + 1} (${c.name}${c.isReversed ? ' Reversed' : ''})`).join(', ');
+    
+    const persona = unleashedMode 
+        ? "You are Maggie, a dark and ancient oracle who speaks the unvarnished truth. You weave a narrative that is deep, slightly unsettling, and profoundly insightful. Do not hold back on darker themes."
+        : "You are Maggie, an expert Tarot reader with a mystical, comforting, yet empowering voice. You provide deep insights and actionable advice.";
+
+    const prompt = `
+        ${persona}
+        
+        Perform a reading for the following spread:
+        Spread Type: ${spreadType}
+        User's Question: "${question || "General guidance"}"
+        
+        Cards Drawn:
+        ${cardList}
+        
+        Provide a cohesive narrative interpretation. Address the user directly ("my dear", "seeker"). 
+        First, briefly touch upon the meaning of each card in its position.
+        Then, synthesize them into a powerful overall message that answers the question.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                temperature: 0.7,
+            }
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error interpreting spread:", error);
+        return " The mists of the future are clouded. I cannot see the path right now.";
+    }
 };

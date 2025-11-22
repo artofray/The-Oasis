@@ -243,22 +243,10 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
     }
 
     return (
-        <div className="flex flex-col h-full w-full bg-[#0d1117] rounded-lg text-white">
-            <div className="flex-1 bg-cover bg-center rounded-t-lg relative" style={{backgroundImage: `url('https://i.imgur.com/k7b9ytE.png')`}}>
-                <div className="absolute inset-0 bg-black/50"></div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4">
-                    <button className="px-4 py-2 text-sm font-semibold rounded-md bg-black/50 backdrop-blur-sm border border-gray-700 hover:bg-gray-800 transition-colors">Voice Changer</button>
-                    <button className="px-4 py-2 text-sm font-semibold rounded-md bg-black/50 backdrop-blur-sm border border-gray-700 hover:bg-gray-800 transition-colors">AGI.NET</button>
-                </div>
-                 {/* Chat overlay */}
-                <div className="absolute bottom-4 right-4 w-full max-w-sm">
-                    <ErrorBoundary>
-                         <div className="h-64 bg-black/30 backdrop-blur-sm rounded-lg flex flex-col">
-                             <ChatWindow messages={messages} />
-                         </div>
-                    </ErrorBoundary>
-                </div>
-            </div>
+        <div className="flex flex-col h-full w-full bg-[#0d1117] text-white">
+            <ErrorBoundary>
+                <ChatWindow messages={messages} />
+            </ErrorBoundary>
             
             <MessageInput
                 onSendMessage={handleSendMessage}

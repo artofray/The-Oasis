@@ -1,4 +1,5 @@
-import type { RoundTableAgent, PenthouseLayout, JournalEntry, ChatMessage, SavedPlay, SandboxEnvironment } from '../types';
+
+import type { RoundTableAgent, PenthouseLayout, JournalEntry, ChatMessage, SavedPlay, SandboxEnvironment, TarotDeck } from '../types';
 import { AGENTS as INITIAL_AGENTS } from '../components/apps/round-table/constants';
 
 // This interface defines the complete state of our Oasis world.
@@ -6,6 +7,7 @@ export interface OasisState {
     agents: RoundTableAgent[];
     penthouseLayout: PenthouseLayout;
     journalEntries: Record<string, JournalEntry>;
+    customDecks: TarotDeck[];
     roundTableMessages: ChatMessage[];
     unleashedMode: boolean;
     sandboxEnvironment: SandboxEnvironment;
@@ -19,6 +21,7 @@ const getDefaultState = (): OasisState => ({
     agents: INITIAL_AGENTS,
     penthouseLayout: 'https://images.unsplash.com/photo-1598802826847-16b7724a856f?q=80&w=2832&auto=format&fit=crop',
     journalEntries: {},
+    customDecks: [],
     roundTableMessages: [],
     unleashedMode: false,
     sandboxEnvironment: 'Default',
@@ -52,6 +55,8 @@ const loadDataFromFile = (file: File): Promise<OasisState> => {
                 if (typeof result === 'string') {
                     const parsedState = JSON.parse(result) as OasisState;
                     if (parsedState.agents && parsedState.penthouseLayout !== undefined && parsedState.journalEntries !== undefined && parsedState.roundTableMessages !== undefined) {
+                        // Migration for new fields
+                        if (!parsedState.customDecks) parsedState.customDecks = [];
                         resolve(parsedState);
                     } else {
                         reject(new Error("Invalid state file structure."));
@@ -202,6 +207,7 @@ const loadStateFromDecentralizedNetwork = async (): Promise<OasisState> => {
             agents: mergedAgents.length > 0 ? mergedAgents : defaultState.agents,
             penthouseLayout: (typeof savedState.penthouseLayout === 'string' || savedState.penthouseLayout === null) ? savedState.penthouseLayout : defaultState.penthouseLayout,
             journalEntries: typeof savedState.journalEntries === 'object' && savedState.journalEntries !== null ? savedState.journalEntries : defaultState.journalEntries,
+            customDecks: Array.isArray(savedState.customDecks) ? savedState.customDecks : defaultState.customDecks,
             roundTableMessages: Array.isArray(savedState.roundTableMessages) ? savedState.roundTableMessages : defaultState.roundTableMessages,
             unleashedMode: savedState.unleashedMode ?? false,
             sandboxEnvironment: savedState.sandboxEnvironment || defaultState.sandboxEnvironment,

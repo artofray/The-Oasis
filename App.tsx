@@ -126,6 +126,9 @@ const App: React.FC = () => {
             case 'tarot_journal': return <TarotJournalView 
                 entries={state.journalEntries}
                 setEntries={(entries) => setState(s => s ? {...s, journalEntries: entries} : s)}
+                customDecks={state.customDecks || []}
+                setCustomDecks={(updater) => setState(s => s ? {...s, customDecks: updater(s.customDecks)} : s)}
+                unleashedMode={state.unleashedMode}
             />;
             case 'theatre': return <TheatreView 
                  agents={state.agents}

@@ -14,6 +14,18 @@ export interface TarotCard {
     name: string;
     keywords: string[];
     interpretation: string;
+    suit?: string;
+    number?: number;
+    imageUrl?: string; // For generated cards
+    isReversed?: boolean;
+}
+
+export interface TarotDeck {
+    id: string;
+    name: string;
+    theme: string;
+    description?: string;
+    cards: Record<string, string>; // Map card name to image URL
 }
 
 export interface JournalEntry {
@@ -22,6 +34,16 @@ export interface JournalEntry {
     cards: TarotCard[];
     overallInterpretation: string;
     notes: string;
+}
+
+export type TarotSpreadType = 'One Card' | 'Three Card' | 'Celtic Cross';
+
+export interface SpreadPosition {
+    id: number;
+    name: string;
+    description: string;
+    x: number; // Relative grid position for layout
+    y: number;
 }
 
 // From App.tsx and Sidebar.tsx
