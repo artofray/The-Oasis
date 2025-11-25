@@ -109,7 +109,7 @@ const App: React.FC = () => {
         if (!state) return null;
 
         switch (currentView) {
-            case 'dashboard': return <Dashboard />;
+            case 'dashboard': return <Dashboard setCurrentView={setCurrentView} />;
             case 'mansion': return <MansionView agents={state.agents} />;
             case 'workflows': return <WorkflowsView />;
             case 'teach': return <TeachView />;
@@ -166,7 +166,7 @@ const App: React.FC = () => {
             case 'entertainment_hub': return <EntertainmentHubView agents={state.agents} unleashedMode={state.unleashedMode} />;
             case 'web_series': return <WebSeriesView agents={state.agents} unleashedMode={state.unleashedMode} />;
             case 'near_guide': return <NearGuideView />;
-            default: return <Dashboard />;
+            default: return <Dashboard setCurrentView={setCurrentView} />;
         }
     };
     

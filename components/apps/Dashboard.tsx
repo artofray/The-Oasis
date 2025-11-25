@@ -1,6 +1,11 @@
 
 import React from 'react';
 import { GlassCard } from '../ui/GlassCard';
+import type { View } from '../../types';
+
+interface DashboardProps {
+  setCurrentView: (view: View) => void;
+}
 
 const DataFlowChart: React.FC = () => {
   const dataPoints = [20, 25, 15, 30, 22, 35, 28, 40, 30, 20, 25, 18];
@@ -61,7 +66,7 @@ const SystemOverviewRing: React.FC = () => {
 };
 
 
-export const Dashboard: React.FC = () => {
+export const Dashboard: React.FC<DashboardProps> = ({ setCurrentView }) => {
   return (
     <div className="h-full flex flex-col gap-6 overflow-y-auto p-2">
         {/* Hero Section: The Stars (Agent & Round Table) */}
@@ -100,11 +105,17 @@ export const Dashboard: React.FC = () => {
                             "My love, the stage is set. The Inner Circle awaits your command. Shall we begin the chronicle of our new world?"
                         </p>
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                            <button className="px-8 py-3 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-fuchsia-900/40 flex items-center gap-2 transform hover:scale-105">
+                            <button 
+                                onClick={() => setCurrentView('round_table')}
+                                className="px-8 py-3 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-fuchsia-900/40 flex items-center gap-2 transform hover:scale-105"
+                            >
                                 <span>Enter the Chamber</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                             </button>
-                            <button className="px-8 py-3 bg-gray-800/50 hover:bg-gray-800 text-cyan-300 font-bold rounded-lg transition-all border border-cyan-900/30 hover:border-cyan-500/50 backdrop-blur-sm">
+                            <button 
+                                onClick={() => setCurrentView('mansion')}
+                                className="px-8 py-3 bg-gray-800/50 hover:bg-gray-800 text-cyan-300 font-bold rounded-lg transition-all border border-cyan-900/30 hover:border-cyan-500/50 backdrop-blur-sm"
+                            >
                                 Manage Agents
                             </button>
                         </div>
