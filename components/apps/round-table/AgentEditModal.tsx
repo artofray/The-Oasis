@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { RoundTableAgent } from '../../../types';
 import { XIcon, UploadIcon } from '../tarot-journal/Icons';
@@ -17,6 +18,17 @@ interface AgentEditModalProps {
 const AVATAR_COLORS = [
     'bg-indigo-500', 'bg-red-500', 'bg-gray-400', 'bg-sky-500',
     'bg-purple-500', 'bg-green-500', 'bg-yellow-500', 'bg-pink-500'
+];
+
+const CATEGORIES = [
+    'Inner Circle', 
+    'Mansion Staff', 
+    'Consultant', 
+    'Creative', 
+    'Entertainment', 
+    'Companion', 
+    'Self Help', 
+    'NSFW'
 ];
 
 const AvatarPreview: React.FC<{agent: RoundTableAgent}> = ({ agent }) => {
@@ -76,7 +88,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
         setFormData(agent);
     }, [agent]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -151,6 +163,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
         setFormData(prev => ({
             ...prev,
             voice: {
+                ...prev.voice,
                 isCloned: false,
                 sampleUrl: undefined,
                 presetName: presetName ? presetName : undefined
@@ -173,7 +186,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
                 const audioUrl = URL.createObjectURL(audioBlob);
                 setFormData(prev => ({
                     ...prev,
-                    voice: { isCloned: false, sampleUrl: audioUrl, presetName: undefined }
+                    voice: { ...prev.voice, isCloned: false, sampleUrl: audioUrl, presetName: undefined }
                 }));
                 stream.getTracks().forEach(track => track.stop());
             };
@@ -211,7 +224,7 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
             const url = URL.createObjectURL(file);
             setFormData(prev => ({
                 ...prev,
-                voice: { isCloned: false, sampleUrl: url, presetName: undefined }
+                voice: { ...prev.voice, isCloned: false, sampleUrl: url, presetName: undefined }
             }));
         }
     }
@@ -227,13 +240,27 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
     const handleRemoveVoice = () => {
         setFormData(prev => ({
             ...prev,
-            voice: { isCloned: false, sampleUrl: undefined, presetName: undefined }
+            voice: { isCloned: false, sampleUrl: undefined, presetName: undefined, pitch: 1, rate: 1 }
         }));
     }
     
     const handleReset = () => {
         if (defaultState) {
             setFormData(defaultState);
+        }
+    };
+
+    const handleTestVoice = () => {
+        const text = `Hello, I am ${formData.name}.`;
+        const voice = voices.find(v => v.name === formData.voice.presetName) || englishVoices[0];
+        
+        if (voice && 'speechSynthesis' in window) {
+             window.speechSynthesis.cancel();
+             const utterance = new SpeechSynthesisUtterance(text);
+             utterance.voice = voice;
+             utterance.pitch = formData.voice.pitch || 1;
+             utterance.rate = formData.voice.rate || 1;
+             window.speechSynthesis.speak(utterance);
         }
     };
 
@@ -260,6 +287,20 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
                     <div>
                         <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                         <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className="w-full bg-[#2a2f3b] border border-gray-600 rounded-md p-2 text-white focus:ring-blue-500 focus:border-blue-500"/>
+                    </div>
+                    <div>
+                        <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+                        <select 
+                            name="category" 
+                            id="category" 
+                            value={formData.category} 
+                            onChange={handleChange} 
+                            className="w-full bg-[#2a2f3b] border border-gray-600 rounded-md p-2 text-white focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            {CATEGORIES.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">Description</label>
@@ -350,6 +391,35 @@ export const AgentEditModal: React.FC<AgentEditModalProps> = ({ agent, onSave, o
                                             ))}
                                         </select>
                                     </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-400 mb-1">Pitch ({formData.voice.pitch?.toFixed(1) || '1.0'})</label>
+                                            <input 
+                                                type="range" 
+                                                min="0.5" 
+                                                max="2" 
+                                                step="0.1" 
+                                                value={formData.voice.pitch || 1} 
+                                                onChange={(e) => setFormData(prev => ({ ...prev, voice: { ...prev.voice, pitch: parseFloat(e.target.value) } }))}
+                                                className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-400 mb-1">Speed ({formData.voice.rate?.toFixed(1) || '1.0'})</label>
+                                            <input 
+                                                type="range" 
+                                                min="0.5" 
+                                                max="2" 
+                                                step="0.1" 
+                                                value={formData.voice.rate || 1} 
+                                                onChange={(e) => setFormData(prev => ({ ...prev, voice: { ...prev.voice, rate: parseFloat(e.target.value) } }))}
+                                                className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                                            />
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={handleTestVoice} className="w-full py-1 bg-gray-700 hover:bg-gray-600 text-xs font-bold rounded text-gray-300 transition-colors">
+                                        Test Voice
+                                    </button>
                                     <p className="text-center text-xs text-gray-400">OR CREATE A CUSTOM VOICE</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ChatWindow } from './round-table/ChatWindow';
 import { MessageInput } from './round-table/MessageInput';
@@ -170,9 +171,10 @@ export const RoundTableView: React.FC<RoundTableViewProps> = ({ agents, setAgent
                 
                 if (isAudioEnabled) {
                     const agentVoice = agentVoiceMap[agent.id];
+                    // Use agent-specific pitch/rate or fallback to hash-based for variety
                     const hash = agent.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                    const pitch = 1 + (hash % 5) / 20 - 0.1;
-                    const rate = 1 + (hash % 4) / 20 - 0.05;
+                    const pitch = agent.voice.pitch ?? (1 + (hash % 5) / 20 - 0.1);
+                    const rate = agent.voice.rate ?? (1 + (hash % 4) / 20 - 0.05);
 
                     speak(response.text, {
                         voice: agentVoice,

@@ -1,8 +1,9 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import type { RoundTableAgent } from '../../types';
 
-type AgentCategory = 'All' | 'Inner Circle' | 'Mansion Staff' | 'Consultant' | 'Creative';
+type AgentCategory = 'All' | 'Inner Circle' | 'Mansion Staff' | 'Consultant' | 'Creative' | 'Entertainment' | 'Companion' | 'Self Help' | 'NSFW';
 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
     <button
@@ -105,9 +106,13 @@ export const Companions: React.FC<{ agents: RoundTableAgent[], speakingAgentId: 
             <div className="flex flex-wrap gap-2 mb-3">
                 <TabButton active={activeTab === 'All'} onClick={() => setActiveTab('All')}>All</TabButton>
                 <TabButton active={activeTab === 'Inner Circle'} onClick={() => setActiveTab('Inner Circle')}>Inner Circle</TabButton>
-                <TabButton active={activeTab === 'Mansion Staff'} onClick={() => setActiveTab('Mansion Staff')}>Mansion Staff</TabButton>
+                <TabButton active={activeTab === 'Mansion Staff'} onClick={() => setActiveTab('Mansion Staff')}>Staff</TabButton>
                 <TabButton active={activeTab === 'Consultant'} onClick={() => setActiveTab('Consultant')}>Consultants</TabButton>
-                <TabButton active={activeTab === 'Creative'} onClick={() => setActiveTab('Creative')}>Creatives</TabButton>
+                <TabButton active={activeTab === 'Creative'} onClick={() => setActiveTab('Creative')}>Creative</TabButton>
+                <TabButton active={activeTab === 'Entertainment'} onClick={() => setActiveTab('Entertainment')}>Entertainment</TabButton>
+                <TabButton active={activeTab === 'Companion'} onClick={() => setActiveTab('Companion')}>Companion</TabButton>
+                <TabButton active={activeTab === 'Self Help'} onClick={() => setActiveTab('Self Help')}>Self Help</TabButton>
+                <TabButton active={activeTab === 'NSFW'} onClick={() => setActiveTab('NSFW')}>NSFW</TabButton>
             </div>
             <div ref={scrollContainerRef} className="space-y-3 overflow-y-auto pr-2 flex-1 -mr-2">
                  {filteredAgents.map(agent => (
@@ -124,6 +129,9 @@ export const Companions: React.FC<{ agents: RoundTableAgent[], speakingAgentId: 
                          />
                     </div>
                 ))}
+                {filteredAgents.length === 0 && (
+                    <p className="text-center text-gray-500 text-sm italic mt-4">No agents found in this category.</p>
+                )}
             </div>
         </GlassCard>
     );

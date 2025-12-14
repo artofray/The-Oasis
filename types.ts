@@ -79,12 +79,14 @@ export interface RoundTableAgent {
     avatarUrl?: string;
     currentActivity: string;
     systemInstruction: string;
-    category: 'Inner Circle' | 'Mansion Staff' | 'Consultant' | 'Creative';
+    category: 'Inner Circle' | 'Mansion Staff' | 'Consultant' | 'Creative' | 'Entertainment' | 'Companion' | 'Self Help' | 'NSFW';
     pet?: { name: string; type: string };
     voice: {
         isCloned: boolean;
         sampleUrl?: string;
         presetName?: string;
+        pitch?: number;
+        rate?: number;
     };
     body?: {
         torsoScale?: number;
