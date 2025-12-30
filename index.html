@@ -3,29 +3,96 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NEAR Protocol Developer Guide</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Quantum Oasis | Sovereignty Through Infrastructure</title>
+    <meta name="description" content="Universal Basic Ownership through decentralized energy harvesting. Own your power. Own your data. Own your future." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-    <link rel="stylesheet" href="./index.css">
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react/": "https://esm.sh/react@18.2.0/",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-    "@google/genai": "https://esm.sh/@google/genai@0.14.1",
-    "three": "https://esm.sh/three@0.160.0",
-    "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
-    "three/": "https://aistudiocdn.com/three@^0.180.0/"
-  }
-}
-</script>
-</head>
-  <body>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'oasis': {
+                'deep': '#0a0a0f',
+                'dark': '#0d1117',
+                'midnight': '#161b22',
+                'steel': '#21262d',
+                'slate': '#30363d',
+                'muted': '#8b949e',
+                'light': '#c9d1d9',
+                'bright': '#f0f6fc',
+              },
+              'quantum': {
+                'cyan': '#00d4ff',
+                'teal': '#00ffaa',
+                'gold': '#ffd700',
+                'amber': '#ff9500',
+                'crimson': '#ff3366',
+                'violet': '#8b5cf6',
+              }
+            },
+            fontFamily: {
+              'display': ['Orbitron', 'sans-serif'],
+              'body': ['Rajdhani', 'sans-serif'],
+              'mono': ['Space Mono', 'monospace'],
+            },
+            animation: {
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'glow': 'glow 2s ease-in-out infinite alternate',
+              'grid-flow': 'gridFlow 20s linear infinite',
+              'float': 'float 6s ease-in-out infinite',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      @keyframes glow {
+        from { text-shadow: 0 0 10px #00d4ff, 0 0 20px #00d4ff, 0 0 30px #00d4ff; }
+        to { text-shadow: 0 0 20px #00ffaa, 0 0 30px #00ffaa, 0 0 40px #00ffaa; }
+      }
+      @keyframes gridFlow {
+        0% { background-position: 0 0; }
+        100% { background-position: 50px 50px; }
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+      }
+      .grid-bg {
+        background-image: 
+          linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        animation: gridFlow 20s linear infinite;
+      }
+      .glass {
+        background: rgba(13, 17, 23, 0.8);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 212, 255, 0.1);
+      }
+      .glow-border {
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.2), inset 0 0 20px rgba(0, 212, 255, 0.05);
+      }
+      .text-gradient {
+        background: linear-gradient(135deg, #00d4ff 0%, #00ffaa 50%, #ffd700 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .fear-critical { animation: pulse 0.5s ease-in-out infinite; background: #ff3366; }
+      .fear-warning { background: #ff9500; }
+      .fear-stable { background: #00ffaa; }
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #0d1117; }
+      ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #00d4ff; }
+    </style>
+  </head>
+  <body class="bg-oasis-deep text-oasis-light font-body">
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
